@@ -246,6 +246,10 @@ class FaceDetect:
         return det, kpss
 
     def get_single_face_cropped(self, image, max_num=0, metric="max"):
+        """
+        This will detect the face from a Numpy image array and will crop the face only.
+        If more than one face detected, it will send False status.
+        """
         obj_return = {
             "stat": False,
             "face": None
@@ -267,9 +271,12 @@ class FaceDetect:
         return obj_return
 
     def get_all_faces_marked(self, image, draw_points:bool = True, max_num=0, metric="max"):
+        """
+        Detect and mark all faces on a single image.
+        """
         if not self.session:
             print("Onnx session is not ready")
-            return False
+            return None
 
         boxes_list, points_list = self.detect(image, max_num, metric)
         # draw boxes for identified faces
