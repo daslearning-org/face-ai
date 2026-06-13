@@ -1,0 +1,84 @@
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.button import MDFillRoundFlatIconButton
+from kivymd.uix.label import MDLabel
+
+from kivy.lang import Builder
+from kivy.properties import StringProperty, NumericProperty, ObjectProperty
+from kivy.metrics import dp, sp
+from kivy.uix.widget import Widget
+from kivy.utils import platform
+
+Builder.load_string('''
+
+<InitBox>:
+    orientation: 'vertical'
+    spacing: dp(20)
+    #padding: 8, 0, 8, self.bottom_pad # left, top, right, bottom
+
+    MDGridLayout: # download section
+        cols: 2
+        adaptive_height: True
+        padding: 0, 8, 0, 0
+
+        MDLabel:
+            id: bt_list_btn_lbl
+            text: "Download the model files for the first time"
+            halign: "left"
+            font_size: sp(14)
+            size_hint_x: 0.4
+            markup: True
+        MDFillRoundFlatIconButton:
+            text: "Downlaod Models"
+            icon: "download"
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.6
+            font_size: sp(24)
+            on_release: app.list_bl_devices(self)
+
+    Widget:
+        size_hint_y: 1
+
+    MDGridLayout: # proceed section
+        cols: 2
+        spacing: dp(8)
+
+        MDFillRoundFlatIconButton:
+            text: "Start Services"
+            icon: "play"
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.3
+            font_size: sp(24)
+            #md_bg_color: 'pink'
+            on_release: app.start_ai_svc()
+
+        MDFillRoundFlatIconButton:
+            text: "Proceed"
+            icon: "door-open"
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.7
+            font_size: sp(24)
+            md_bg_color: 'green'
+            on_release: app.goto_face_recognition()
+
+    Widget:
+        size_hint_y: 1
+''')
+
+class InitBox(MDBoxLayout):
+    """ Takes configuration inputs """
+    top_pad = NumericProperty(0)
+    bottom_pad = NumericProperty(0)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if platform == "android":
+            try:
+                from android.display_cutout import get_height_of_bar
+                self.top_pad = int(get_height_of_bar('status'))
+                self.bottom_pad = int(get_height_of_bar('navigation'))
+            except Exception as e:
+                print(f"Failed android 15 padding: {e}")
+                self.top_pad = 32
+                self.bottom_pad = 48
