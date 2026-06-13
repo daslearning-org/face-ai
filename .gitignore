@@ -3,6 +3,22 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# kivy
+.buildozer/
+logs/
+bin/
+test_codes/
+config/
+*.apk
+*.exe
+.vscode/
+
+# AI models
+*.onnx
+*.onnx.*
+*.db
+*.mp4
+
 # C extensions
 *.so
 
