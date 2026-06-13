@@ -250,25 +250,19 @@ class FaceDetect:
         This will detect the face from a Numpy image array and will crop the face only.
         If more than one face detected, it will send False status.
         """
-        obj_return = {
-            "stat": False,
-            "face": None
-        }
-
+        crp_face = None
         if not self.session:
             print("Onnx session is not ready")
-            return obj_return
+            return None
 
         boxes_list, points_list = self.detect(image, max_num, metric)
         if len(boxes_list) >= 2:
             print("Found more than one faces")
         elif len(boxes_list) == 1:
             crp_face = crop_with_buffer(image, boxes_list[0])
-            obj_return["stat"] = True
-            obj_return["face"] = crp_face
         else:
             print("No face found in the photo")
-        return obj_return
+        return crp_face
 
     def get_all_faces_marked(self, image, draw_points:bool = True, max_num=0, metric="max"):
         """
