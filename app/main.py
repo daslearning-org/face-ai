@@ -207,14 +207,14 @@ class FaceAiApp(MDApp):
         )
 
         if self.img_purpose == "src":
-            uploaded_image_box = self.root.ids.face_match_scr.ids.fm_up_src_box
+            upload_image_box = self.root.ids.face_match_scr.ids.fm_up_src_box
             self.src_image_path = path
         elif self.img_purpose == "trgt":
-            uploaded_image_box = self.root.ids.face_match_scr.ids.fm_up_trgt_box
+            upload_image_box = self.root.ids.face_match_scr.ids.fm_up_trgt_box
             self.trgt_image_path = path
 
-        uploaded_image_box.clear_widgets()
-        uploaded_image_box.add_widget(fitImage)
+        upload_image_box.clear_widgets()
+        upload_image_box.add_widget(fitImage)
 
     def submit_face_match(self, instance=None):
         """
@@ -269,7 +269,86 @@ class FaceAiApp(MDApp):
                 #valign="top",
                 markup=True
             )
+            src_box.add_widget(label)
 
+    def reset_face_matcher(self, instance=None):
+        self.src_image_path = None
+        self.trgt_image_path = None
+        self.img_purpose = ""
+        src_box = self.root.ids.face_match_scr.ids.fm_gen_src_box
+        trgt_box = self.root.ids.face_match_scr.ids.fm_gen_trgt_box
+        src_box.clear_widgets()
+        trgt_box.clear_widgets()
+        upload_src_box = self.root.ids.face_match_scr.ids.fm_up_src_box
+        upload_trgt_box = self.root.ids.face_match_scr.ids.fm_up_trgt_box
+        upload_src_box.clear_widgets()
+        upload_trgt_box.clear_widgets()
+
+    def show_delete_alert(self):
+        op_img_count = 0
+        for filename in os.listdir(self.op_dir):
+            if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+                op_img_count += 1
+        self.show_text_dialog(
+            title="Delete all output files?",
+            text=f"There are total: {op_img_count} image files. This action cannot be undone!",
+            buttons=[
+                MDFlatButton(
+                    text="CANCEL",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.txt_dialog_closer
+                ),
+                MDFlatButton(
+                    text="DELETE",
+                    theme_text_color="Custom",
+                    text_color="red",
+                    on_release=self.delete_op_action
+                ),
+            ],
+        )
+
+    def delete_op_action(self, instance):
+        # Custom function called when DISCARD is clicked
+        for filename in os.listdir(self.op_dir):
+            if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+                file_path = os.path.join(self.op_dir, filename)
+                try:
+                    os.unlink(file_path)
+                    print(f"Deleted {file_path}")
+                except Exception as e:
+                    print(f"Could not delete the audion files, error: {e}")
+        self.show_toast_msg("Executed the audio cleanup!")
+        self.txt_dialog_closer(instance)
+
+    def open_link(self, instance, url):
+        import webbrowser
+        webbrowser.open(url)
+
+    def update_link_open(self, instance=None):
+        self.txt_dialog_closer(instance)
+        self.open_link(instance=instance, url="https://github.com/daslearning-org/face-ai/releases")
+
+    def update_checker(self, instance=None):
+        buttons = [
+            MDFlatButton(
+                text="Cancel",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                on_release=self.txt_dialog_closer
+            ),
+            MDFlatButton(
+                text="Releases",
+                theme_text_color="Custom",
+                text_color="green",
+                on_release=self.update_link_open
+            ),
+        ]
+        self.show_text_dialog(
+            "Check for update",
+            f"Your version: {__version__}",
+            buttons
+        )
 
     def events(self, instance, keyboard, keycode, text, modifiers):
         """Handle mobile device button presses (e.g., Android back button)."""
