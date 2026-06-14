@@ -5,65 +5,65 @@ import cv2
 import numpy as np
 
 ## -- local imports -- ##
-from services.faceDetect import FaceDetect, crop_with_buffer
+from services.faceDetect import FaceDetect, crop_with_buffer, draw_corners
 from services.faceRecognition import FaceRecog
 
 ## -- global vars -- ##
 detect_path = "/home/somnath/.insightface/models/buffalo_l/det_10g.onnx"
 recog_path = "/home/somnath/.insightface/models/buffalo_l/arc.onnx"
-out_path = "./outputs"
+out_path = ""
 
 ### --- global functions --- ###
+
+def write_text(image, bbox, text:str, colour=(255, 0, 0)):
+    original_height, original_width = image.shape[:2]
+
+    thickness = 2
+    if original_width >= 4000:
+        text_size = 2.0
+        thickness = 4
+    elif original_width >= 3000:
+        text_size = 1.8
+        thickness = 3
+    elif original_width >= 2500:
+        text_size = 1.5
+    elif original_width >= 2000:
+        text_size = 1.2
+    elif original_width >= 1500:
+        text_size = 1.0
+    elif original_width >= 800:
+        text_size = 0.8
+        thickness = 2
+    else:
+        text_size = 0.5
+        thickness = 1
+
+    x1, y1, x2, y2 = bbox[:4].astype(np.int32)
+    cv2.putText(image, text, (x1, y1 - 7), cv2.FONT_HERSHEY_SIMPLEX, text_size, colour, thickness)
+
 def face_match_draw(img1, faces1, img2, faces2, matches, scores, target_size=[512, 512]): # target_size: (h, w)
     out1 = img1.copy()
     out2 = img2.copy()
     matched_box_color = (0, 255, 0)    # BGR
     mismatched_box_color = (0, 0, 255) # BGR
 
-    # Resize to target size with the same aspect ratio
-    padded_out1 = np.zeros((target_size[0], target_size[1], 3)).astype(np.uint8)
-    h1, w1, _ = out1.shape
-    ratio1 = min(target_size[0] / out1.shape[0], target_size[1] / out1.shape[1])
-    new_h1 = int(h1 * ratio1)
-    new_w1 = int(w1 * ratio1)
-    resized_out1 = cv2.resize(out1, (new_w1, new_h1), interpolation=cv2.INTER_LINEAR).astype(np.float32)
-    top = max(0, target_size[0] - new_h1) // 2
-    bottom = top + new_h1
-    left = max(0, target_size[1] - new_w1) // 2
-    right = left + new_w1
-    padded_out1[top : bottom, left : right] = resized_out1
+    # draw on face1
+    draw_corners(out1, faces1[0], matched_box_color)
 
-    # Draw bbox
-    bbox1 = faces1[0][:4] * ratio1
-    x, y, w, h = bbox1.astype(np.int32)
-    cv2.rectangle(padded_out1, (x + left, y + top), (x + left + w, y + top + h), matched_box_color, 2)
-
-    # Resize to target size with the same aspect ratio
-    padded_out2 = np.zeros((target_size[0], target_size[1], 3)).astype(np.uint8)
-    h2, w2, _ = out2.shape
-    ratio2 = min(target_size[0] / out2.shape[0], target_size[1] / out2.shape[1])
-    new_h2 = int(h2 * ratio2)
-    new_w2 = int(w2 * ratio2)
-    resized_out2 = cv2.resize(out2, (new_w2, new_h2), interpolation=cv2.INTER_LINEAR).astype(np.float32)
-    top = max(0, target_size[0] - new_h2) // 2
-    bottom = top + new_h2
-    left = max(0, target_size[1] - new_w2) // 2
-    right = left + new_w2
-    padded_out2[top : bottom, left : right] = resized_out2
-
-    # Draw bbox
+    # Draw on face2
     if faces2.shape[0] == len(matches) and len(matches) == len(scores):
         for index, match in enumerate(matches):
-            bbox2 = faces2[index][:4] * ratio2
-            x, y, w, h = bbox2.astype(np.int32)
-            box_color = matched_box_color if match else mismatched_box_color
-            cv2.rectangle(padded_out2, (x + left, y + top), (x + left + w, y + top + h), box_color, 2)
-            score = scores[index]
-            text_color = matched_box_color if match else mismatched_box_color
-            cv2.putText(padded_out2, "{:.2f}".format(score), (x + left, y + top - 5), cv2.FONT_HERSHEY_DUPLEX, 0.4, text_color)
-        return np.concatenate([padded_out1, padded_out2], axis=1)
+            score = scores[index]*100
+            if match == 1:
+                draw_corners(out2, faces2[index], matched_box_color)
+                write_text(out2, faces2[index], "{:.2f}".format(score), matched_box_color)
+            else:
+                draw_corners(out2, faces2[index], mismatched_box_color)
+                write_text(out2, faces2[index], "{:.2f}".format(score), mismatched_box_color)
+        return out1, out2
     else:
-        return None
+        return None, None
+    #return np.concatenate([padded_out1, padded_out2], axis=1)
 
 ### --- classes --- ###
 class FaceAiSvc:
@@ -132,7 +132,8 @@ class FaceAiSvc:
         obj_return = {
             "stat": False,
             "msg": "",
-            "path": ""
+            "path": "",
+            "checked": ""
         }
         if self.face_detect.session is None or self.face_recog.session is None:
             print("Either detection or recognition session(s) is/are not ready")
@@ -172,14 +173,17 @@ class FaceAiSvc:
                 score = np.dot(face1_emb, face_emb)
                 scores.append(score)
                 matches.append(1 if score >= self._threshold_cosine else 0)
-            new_image = face_match_draw(image1, faces1, image2, faces2, matches, scores)
+            new_image1, new_image2 = face_match_draw(image1, faces1, image2, faces2, matches, scores)
             now = datetime.datetime.now()
             current_time = str(now.strftime("%H%M%S"))
             current_date = str(now.strftime("%Y%m%d"))
-            filename = os.path.join(self.out_path, f"fmg_{current_date}_{current_time}.jpg")
-            cv2.imwrite(filename, new_image)
+            filename1 = os.path.join(self.out_path, f"fmg1_{current_date}_{current_time}.jpg")
+            filename2 = os.path.join(self.out_path, f"fmg2_{current_date}_{current_time}.jpg")
+            cv2.imwrite(filename1, new_image1)
+            cv2.imwrite(filename2, new_image2)
             obj_return["msg"] = "Match success"
             obj_return["stat"] = True
-            obj_return["path"] = filename
+            obj_return["path"] = filename1
+            obj_return["checked"] = filename2
         return obj_return
 

@@ -53,9 +53,9 @@ def crop_with_buffer(image, bbox, buffer_px=2):
     cropped_image = image[y1_buf:y2_buf, x1_buf:x2_buf]
     return cropped_image
 
-def draw_corners(image, bbox):
-    x1, y1, x2, y2, _ = bbox.astype(np.int32)
-    cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0), 2)
+def draw_corners(image, bbox, colour=(255, 0, 0)):
+    x1, y1, x2, y2 = bbox[:4].astype(np.int32)
+    cv2.rectangle(image, (x1, y1), (x2, y2), colour, 2)
 
 def draw_keypoints(image, kps):
     for i in range(kps.shape[0]):
