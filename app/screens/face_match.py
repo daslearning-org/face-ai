@@ -1,0 +1,123 @@
+from kivy.lang import Builder
+from kivy.metrics import dp, sp
+
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDFillRoundFlatIconButton
+
+
+Builder.load_string('''
+<TempSpinWait>:
+    id: temp_spin
+    orientation: 'horizontal'
+    adaptive_height: True
+    padding: dp(8)
+
+    MDLabel:
+        text: "Please wait..."
+        font_style: "Subtitle1"
+        adaptive_width: True
+
+    MDSpinner:
+        size_hint: None, None
+        size: dp(14), dp(14)
+        active: True
+
+
+<FaceMatchBox@MDBoxLayout>:
+    orientation: 'vertical'
+    spacing: dp(4)
+
+    MDGridLayout: # original image
+        cols: 2
+        size_hint_y: 0.4
+        id: fm_up_box
+        spacing: dp(4)
+        padding: dp(4)
+
+        MDBoxLayout:
+            orientation: 'vertical'
+
+            MDFillRoundFlatIconButton:
+                id: btn_fm_src_upload
+                text: "Source Image"
+                icon: "upload"
+                font_size: sp(18)
+                #md_bg_color: '#333036'
+                pos_hint: {"center_x": .5, "center_y": 1}
+                #size_hint_x: 0.2
+                on_release: app.open_img_file_manager("btn_fm_src_upload")
+
+            MDBoxLayout:
+                id: fm_up_src_box
+                # add fit image here for source image
+
+        MDBoxLayout:
+            orientation: 'vertical'
+
+            MDFillRoundFlatIconButton:
+                id: btn_fm_tgt_upload
+                text: "Target Image"
+                icon: "upload"
+                font_size: sp(18)
+                #md_bg_color: '#333036'
+                pos_hint: {"center_x": .5, "center_y": 1}
+                #size_hint_x: 0.2
+                on_release: app.open_img_file_manager("btn_fm_tgt_upload")
+
+            MDBoxLayout:
+                id: fm_up_trgt_box
+                # add fit image here for source image
+
+    MDGridLayout: # buttons
+        cols: 3
+        size_hint_y: 0.1
+        spacing: dp(4)
+        padding: 14, 4, 14, 4 # left, top, right, bottom
+
+        MDFillRoundFlatIconButton:
+            id: btn_submit
+            text: "Detect"
+            icon: "send"
+            font_size: sp(18)
+            md_bg_color: 'orange'
+            pos_hint: {"center_x": .5, "center_y": .5}
+            size_hint_x: 0.6
+            on_release: app.submit_face_match()
+
+        MDFillRoundFlatIconButton:
+            id: btn_reset
+            text: "Reset"
+            icon: "undo-variant"
+            font_size: sp(18)
+            md_bg_color: '#333036'
+            pos_hint: {"center_x": .5, "center_y": .5}
+            size_hint_x: 0.2
+            on_release: app.reset_face_matcher()
+
+    MDGridLayout: # generated images
+        cols: 2
+        size_hint_y: 0.4
+        id: fm_gen_box
+        spacing: dp(4)
+
+        MDBoxLayout:
+            id: fm_gen_src_box
+            orientation: 'vertical'
+            # add fit image here for source image
+
+        MDBoxLayout:
+            id: fm_gen_trgt_box
+            orientation: 'vertical'
+            # add fit image here for target image
+
+
+''')
+
+class TempSpinWait(MDBoxLayout):
+    pass
+
+class FaceMatchBox(MDBoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = "face_match_box"
