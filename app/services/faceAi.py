@@ -132,8 +132,8 @@ class FaceAiSvc:
         obj_return = {
             "stat": False,
             "msg": "",
-            "path": "",
-            "checked": ""
+            "src": "",
+            "trgt": ""
         }
         if self.face_detect.session is None or self.face_recog.session is None:
             print("Either detection or recognition session(s) is/are not ready")
@@ -183,7 +183,7 @@ class FaceAiSvc:
             cv2.imwrite(filename2, new_image2)
             obj_return["msg"] = "Match success"
             obj_return["stat"] = True
-            obj_return["path"] = filename1
-            obj_return["checked"] = filename2
+            obj_return["src"] = filename1
+            obj_return["trgt"] = filename2
         return obj_return
 

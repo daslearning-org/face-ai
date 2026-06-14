@@ -28,28 +28,50 @@ Builder.load_string('''
     orientation: 'vertical'
     spacing: dp(4)
 
-    BoxLayout: # original image
-        orientation: 'vertical'
+    MDGridLayout: # original image
+        cols: 2
         size_hint_y: 0.4
-        id: uploaded_image
-        #adaptive_height: True
-        # add fit image here
+        id: fm_up_box
+        spacing: dp(4)
+        padding: dp(4)
+
+        MDBoxLayout:
+            id: fm_up_src_box
+            orientation: 'vertical'
+
+            MDFillRoundFlatIconButton:
+                id: btn_fm_src_upload
+                text: "Source Image"
+                icon: "upload"
+                font_size: sp(18)
+                #md_bg_color: '#333036'
+                pos_hint: {"center_x": .5, "center_y": 1}
+                #size_hint_x: 0.2
+                on_release: app.open_img_file_manager(self)
+
+            # add fit image here for source image
+
+        MDBoxLayout:
+            id: fm_up_trgt_box
+            orientation: 'vertical'
+
+            MDFillRoundFlatIconButton:
+                id: btn_fm_tgt_upload
+                text: "Target Image"
+                icon: "upload"
+                font_size: sp(18)
+                #md_bg_color: '#333036'
+                pos_hint: {"center_x": .5, "center_y": 1}
+                #size_hint_x: 0.2
+                on_release: app.open_img_file_manager(self)
+
+            # add fit image here for source image
 
     MDGridLayout: # buttons
         cols: 3
         size_hint_y: 0.1
         spacing: dp(4)
-        padding: 14, 0, 14, 0 # left, top, right, bottom
-
-        MDFillRoundFlatIconButton:
-            id: btn_upload
-            text: "Image"
-            icon: "upload"
-            font_size: sp(18)
-            #md_bg_color: '#333036'
-            pos_hint: {"center_x": .5, "center_y": .5}
-            size_hint_x: 0.2
-            on_release: app.open_img_file_manager()
+        padding: 14, 4, 14, 4 # left, top, right, bottom
 
         MDFillRoundFlatIconButton:
             id: btn_submit
@@ -71,10 +93,21 @@ Builder.load_string('''
             size_hint_x: 0.2
             on_release: app.reset_object_detect()
 
-    BoxLayout: # converted image
-        size_hint_y: 0.5
-        id: result_image
-        # add result here
+    MDGridLayout: # generated images
+        cols: 2
+        size_hint_y: 0.4
+        id: fm_gen_box
+        spacing: dp(4)
+
+        MDBoxLayout:
+            id: fm_gen_src_box
+            orientation: 'vertical'
+            # add fit image here for source image
+
+        MDBoxLayout:
+            id: fm_gen_trgt_box
+            orientation: 'vertical'
+            # add fit image here for target image
 
 
 ''')

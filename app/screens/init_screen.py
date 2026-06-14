@@ -61,14 +61,14 @@ Builder.load_string('''
         cols: 2
         spacing: dp(8)
 
-        #MDFillRoundFlatIconButton:
-        #    text: "Start Services"
-        #    icon: "play"
-        #    pos_hint: {'center_x': 0.5}
-        #    size_hint_x: 0.3
-        #    font_size: sp(24)
-        #    #md_bg_color: 'pink'
-        #    on_release: app.start_ai_svc()
+        MDFillRoundFlatIconButton:
+            text: "Start Services"
+            icon: "play"
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.3
+            font_size: sp(24)
+            #md_bg_color: 'pink'
+            on_release: app.start_face_services()
 
         MDFillRoundFlatIconButton:
             text: "Proceed"
