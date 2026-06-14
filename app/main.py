@@ -241,8 +241,9 @@ class FaceAiApp(MDApp):
         if self.is_downloading:
             self.show_toast_msg("Please wait for the download to finish", is_error=True)
             return
+        download_path = os.path.join(self.model_dir, "faceai.tar.gz")
         model_url = "https://github.com/daslearning-org/face-ai/releases/download/vOnnxModels/faceai.tar.gz"
-        self.download_model_file(model_url, self.model_dir)
+        self.download_model_file(model_url, download_path)
 
     def model_existance_check(self):
         if os.path.exists(self.detect_model_path) and os.path.exists(self.recog_model_path):
@@ -252,16 +253,21 @@ class FaceAiApp(MDApp):
             return
 
     def start_face_services(self, instance=None):
+        if self.models_ok and self.face_ai:
+            self.show_toast_msg("Session is already active")
         if os.path.exists(self.detect_model_path) and os.path.exists(self.recog_model_path):
             self.models_ok = True
         else:
             self.model_download_popup()
             return
         self.face_ai = FaceAiSvc(self.detect_model_path, self.recog_model_path, self.op_dir)
+        start_svc_btn = self.root.ids.init_screen.ids.start_svc_btn
         try:
             self.face_ai.start_detection_session()
             self.face_ai.start_recognition_session()
             self.show_toast_msg("Sesstions started successfully")
+            start_svc_btn.text = "Service Started"
+            start_svc_btn.md_bg_color = 'gray'
         except Exception as e:
             print(f"Could not start the sessions: {e}")
             self.show_toast_msg("Couldn't start the services", is_error=True)

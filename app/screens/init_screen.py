@@ -27,22 +27,23 @@ Builder.load_string('''
     padding: 8, 16, 8, 0 #self.bottom_pad # left, top, right, bottom
 
     MDGridLayout: # download section
-        cols: 2
+        cols: 1
         adaptive_height: True
         padding: 0, 8, 0, 0
 
         MDLabel:
             id: model_check_label
-            text: "Checking the model files..."
-            halign: "left"
+            text: "You need to download the model file first (one time activity). Then you can start the session"
+            halign: "center"
             font_size: sp(18)
-            size_hint_x: 0.4
+            #size_hint_x: 0.4
             markup: True
+            adaptive_height: True
 
         MDBoxLayout:
             id: model_btn_box
             orientation: 'vertical'
-            size_hint_x: 0.6
+            #size_hint_x: 0.6
 
             # the btn to be added here
 
