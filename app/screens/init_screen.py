@@ -12,10 +12,27 @@ from kivy.utils import platform
 
 Builder.load_string('''
 
+<ModelDownloder>:
+    text: "Downlaod Models"
+    icon: "download"
+    pos_hint: {'center_x': 0.5}
+    size_hint_x: 0.6
+    font_size: sp(24)
+    on_release: app.download_models(self)
+
+<StartSvcBtn>:
+    text: "Start Services"
+    icon: "play"
+    pos_hint: {'center_x': 0.5}
+    size_hint_x: 0.3
+    font_size: sp(24)
+    #md_bg_color: 'pink'
+    on_release: app.start_ai_svc()
+
 <InitBox>:
     orientation: 'vertical'
     spacing: dp(20)
-    #padding: 8, 0, 8, self.bottom_pad # left, top, right, bottom
+    padding: 8, 16, 8, 0 #self.bottom_pad # left, top, right, bottom
 
     MDGridLayout: # download section
         cols: 2
@@ -24,18 +41,18 @@ Builder.load_string('''
 
         MDLabel:
             id: bt_list_btn_lbl
-            text: "Download the model files for the first time"
+            text: "Checking the model files..."
             halign: "left"
             font_size: sp(14)
             size_hint_x: 0.4
             markup: True
-        MDFillRoundFlatIconButton:
-            text: "Downlaod Models"
-            icon: "download"
-            pos_hint: {'center_x': 0.5}
-            size_hint_x: 0.6
-            font_size: sp(24)
-            on_release: app.list_bl_devices(self)
+        #MDFillRoundFlatIconButton:
+        #    text: "Downlaod Models"
+        #    icon: "download"
+        #    pos_hint: {'center_x': 0.5}
+        #    size_hint_x: 0.6
+        #    font_size: sp(24)
+        #    on_release: app.list_bl_devices(self)
 
     Widget:
         size_hint_y: 1
@@ -44,14 +61,14 @@ Builder.load_string('''
         cols: 2
         spacing: dp(8)
 
-        MDFillRoundFlatIconButton:
-            text: "Start Services"
-            icon: "play"
-            pos_hint: {'center_x': 0.5}
-            size_hint_x: 0.3
-            font_size: sp(24)
-            #md_bg_color: 'pink'
-            on_release: app.start_ai_svc()
+        #MDFillRoundFlatIconButton:
+        #    text: "Start Services"
+        #    icon: "play"
+        #    pos_hint: {'center_x': 0.5}
+        #    size_hint_x: 0.3
+        #    font_size: sp(24)
+        #    #md_bg_color: 'pink'
+        #    on_release: app.start_ai_svc()
 
         MDFillRoundFlatIconButton:
             text: "Proceed"
@@ -60,11 +77,17 @@ Builder.load_string('''
             size_hint_x: 0.7
             font_size: sp(24)
             md_bg_color: 'green'
-            on_release: app.goto_face_recognition()
+            on_release: app.goto_face_matcher()
 
     Widget:
         size_hint_y: 1
 ''')
+
+class ModelDownloder(MDFillRoundFlatIconButton):
+    pass
+
+class StartSvcBtn(MDFillRoundFlatIconButton):
+    pass
 
 class InitBox(MDBoxLayout):
     """ Takes configuration inputs """

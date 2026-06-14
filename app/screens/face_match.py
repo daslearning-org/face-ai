@@ -24,7 +24,7 @@ Builder.load_string('''
         active: True
 
 
-<FaceRecBox@MDBoxLayout>:
+<FaceMatchBox@MDBoxLayout>:
     orientation: 'vertical'
     spacing: dp(4)
 
@@ -82,7 +82,7 @@ Builder.load_string('''
 class TempSpinWait(MDBoxLayout):
     pass
 
-class FaceRecBox(MDBoxLayout):
+class FaceMatchBox(MDBoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = "img_detect_bx"
+        self.name = "face_match_box"

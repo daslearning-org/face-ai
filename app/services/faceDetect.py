@@ -33,6 +33,9 @@ def distance2kps(points, distance, max_shape=None):
     return np.stack(preds, axis=-1)
 
 def crop_with_buffer(image, bbox, buffer_px=2):
+    """
+    Crop your image with given box positions (bbox)
+    """
     # 1. Unpack and convert coordinates to integers
     x1, y1, x2, y2 = bbox[:4].astype(np.int32)
     # Get image dimensions to prevent out-of-bounds errors
@@ -182,6 +185,10 @@ class FaceDetect:
         return keep
 
     def detect(self, image, max_num=0, metric="max"):
+        """
+        Detect the faces on an image. This returns the face boxes and keypoints.
+        """
+
         if not self.session:
             print("Onnx session is not ready")
             return
