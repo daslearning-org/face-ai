@@ -18,16 +18,8 @@ Builder.load_string('''
     pos_hint: {'center_x': 0.5}
     size_hint_x: 0.6
     font_size: sp(24)
-    on_release: app.download_models(self)
+    on_release: app.start_model_download()
 
-<StartSvcBtn>:
-    text: "Start Services"
-    icon: "play"
-    pos_hint: {'center_x': 0.5}
-    size_hint_x: 0.3
-    font_size: sp(24)
-    #md_bg_color: 'pink'
-    on_release: app.start_ai_svc()
 
 <InitBox>:
     orientation: 'vertical'
@@ -40,19 +32,19 @@ Builder.load_string('''
         padding: 0, 8, 0, 0
 
         MDLabel:
-            id: bt_list_btn_lbl
+            id: model_check_label
             text: "Checking the model files..."
             halign: "left"
-            font_size: sp(14)
+            font_size: sp(18)
             size_hint_x: 0.4
             markup: True
-        #MDFillRoundFlatIconButton:
-        #    text: "Downlaod Models"
-        #    icon: "download"
-        #    pos_hint: {'center_x': 0.5}
-        #    size_hint_x: 0.6
-        #    font_size: sp(24)
-        #    on_release: app.list_bl_devices(self)
+
+        MDBoxLayout:
+            id: model_btn_box
+            orientation: 'vertical'
+            size_hint_x: 0.6
+
+            # the btn to be added here
 
     Widget:
         size_hint_y: 1
@@ -62,6 +54,7 @@ Builder.load_string('''
         spacing: dp(8)
 
         MDFillRoundFlatIconButton:
+            id: start_svc_btn
             text: "Start Services"
             icon: "play"
             pos_hint: {'center_x': 0.5}

@@ -3,6 +3,7 @@ os.environ['KIVY_GL_BACKEND'] = 'sdl2'
 import sys
 from threading import Thread
 import json
+import requests
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -25,6 +26,9 @@ from plyer import filechooser
 
 # local imports
 from services.faceAi import FaceAiSvc
+from screens.init_screen import ModelDownloder
+from screens.face_match import TempSpinWait, FaceMatchBox
+from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
 Window.softinput_mode = "below_target"
@@ -68,7 +72,7 @@ class MainScreenBox(MDBoxLayout):
 
 ### --- main app --- ###
 class FaceAiApp(MDApp):
-
+    is_downloading = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -76,6 +80,7 @@ class FaceAiApp(MDApp):
         self.face_ai = None
         self.txt_dialog = None
         self.is_onnx_running = False
+        self.models_ok = False
 
     def build(self):
         self.theme_cls.primary_palette = "Blue"
@@ -122,10 +127,12 @@ class FaceAiApp(MDApp):
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
-        self.detect_model_path = os.path.join(self.model_dir, "det_10g.onnx")
-        self.recog_model_path = os.path.join(self.model_dir, "arc.onnx")
+        self.detect_model_path = os.path.join(self.model_dir, "faceai", "det_10g.onnx")
+        self.recog_model_path = os.path.join(self.model_dir, "faceai","arc.onnx")
         self.is_inp_file_mgr_open = False
         self.is_out_file_mgr_open = False
+        Clock.schedule_once(lambda dt: self.model_existance_check())
+        print("Init success...")
 
     def show_toast_msg(self, message, is_error=False, duration=3):
         from kivymd.uix.snackbar import MDSnackbar
@@ -153,7 +160,103 @@ class FaceAiApp(MDApp):
         if self.txt_dialog:
             self.txt_dialog.dismiss()
 
+    def model_download_popup(self, instance=None):
+        buttons = [
+            MDFlatButton(
+                text="Cancel",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                on_release=self.txt_dialog_closer
+            ),
+            MDFlatButton(
+                text="Ok",
+                theme_text_color="Custom",
+                text_color="green",
+                on_release=self.start_model_download
+            ),
+        ]
+        self.show_text_dialog(
+            "Download model files",
+            "You need to downlaod the models first.",
+            buttons
+        )
+
+    def unzip_model(self, filepath):
+        import tarfile
+        try:
+            with tarfile.open(filepath, "r:gz") as tar:
+                tar.extractall(path=self.model_dir)
+            os.remove(filepath)
+            self.show_toast_msg("Model files have been downloaded successfully.")
+            self.is_downloading = False
+        except Exception as e:
+            print(f"Unzip error: {e}")
+
+    def update_download_progress(self, downloaded, total_size):
+        if total_size > 0:
+            percentage = (downloaded / total_size) * 100
+            self.download_progress.text = f"Progress: {percentage:.1f}%"
+        else:
+            self.download_progress.text = f"Progress: {downloaded} bytes"
+
+    def download_file(self, download_url, download_path):
+        filename = download_url.split("/")[-1]
+        try:
+            self.is_downloading = filename
+            with requests.get(download_url, stream=True) as req:
+                req.raise_for_status()
+                total_size = int(req.headers.get('content-length', 0))
+                downloaded = 0
+                with open(download_path, 'wb') as f:
+                    for chunk in req.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            Clock.schedule_once(lambda dt: self.update_download_progress(downloaded, total_size))
+            if os.path.exists(download_path):
+                Clock.schedule_once(lambda dt: self.unzip_model(download_path))
+            else:
+                Clock.schedule_once(lambda dt: self.show_toast_msg(f"Download failed for: {download_path}", is_error=True))
+            self.is_downloading = False
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading the onnx file: {e} 😞")
+            Clock.schedule_once(lambda dt: self.show_toast_msg(f"Download failed for: {download_path}", is_error=True))
+            self.is_downloading = False
+        Clock.schedule_once(lambda dt: self.download_progress.dismiss())
+
+    def download_model_file(self, model_url, download_path, instance=None):
+        self.txt_dialog_closer(instance)
+        filename = download_path.split("/")[-1]
+        print(f"Starting the download for: {filename}")
+
+        self.download_progress = MDDialog(
+            title=f"Downloading {filename}",
+            text="Starting download process...",
+            #buttons=buttons
+        )
+        self.download_progress.open()
+        Thread(target=self.download_file, args=(model_url, download_path), daemon=True).start()
+
+    def start_model_download(self, instance=None):
+        if self.is_downloading:
+            self.show_toast_msg("Please wait for the download to finish", is_error=True)
+            return
+        model_url = "https://github.com/daslearning-org/face-ai/releases/download/vOnnxModels/faceai.tar.gz"
+        self.download_model_file(model_url, self.model_dir)
+
+    def model_existance_check(self):
+        if os.path.exists(self.detect_model_path) and os.path.exists(self.recog_model_path):
+            self.models_ok = True
+        else:
+            Clock.schedule_once(lambda dt: self.model_download_popup())
+            return
+
     def start_face_services(self, instance=None):
+        if os.path.exists(self.detect_model_path) and os.path.exists(self.recog_model_path):
+            self.models_ok = True
+        else:
+            self.model_download_popup()
+            return
         self.face_ai = FaceAiSvc(self.detect_model_path, self.recog_model_path, self.op_dir)
         try:
             self.face_ai.start_detection_session()
