@@ -4,6 +4,8 @@ import datetime
 import cv2
 import numpy as np
 
+from kivy.clock import Clock
+
 ## -- local imports -- ##
 from services.faceDetect import FaceDetect, crop_with_buffer, draw_corners
 from services.faceRecognition import FaceRecog
@@ -88,7 +90,7 @@ class FaceAiSvc:
         self.face_recog = FaceRecog(self.recog_onnx)
         self.face_recog.start_session()
 
-    def match_two_images_single_face(self, img1_path:str, img2_path:str):
+    def match_two_images_single_face(self, img1_path:str, img2_path:str, callback=None):
         """
         Match two images with single face on each image. If there is no face or more than one face on any image, it will return None.
 
@@ -116,7 +118,7 @@ class FaceAiSvc:
         val_compare = self.face_recog.match_faces(face1, face2)
         return val_compare
 
-    def face_match_group(self, img1_path:str, img2_path:str):
+    def face_match_group(self, img1_path:str, img2_path:str, callback=None):
         """
         Find the face from image1 (should be single face image) on image2 (could have multiple faces). 
         If there is no face or more than one face on image1, it will return None.
@@ -135,10 +137,14 @@ class FaceAiSvc:
             "src": "",
             "trgt": ""
         }
+        # if session(s) is/are not ready
         if self.face_detect.session is None or self.face_recog.session is None:
-            print("Either detection or recognition session(s) is/are not ready")
+            print("Detection or/and recognition session(s) is/are not ready")
             obj_return["msg"] = "Session is not ready"
-            return obj_return
+            if callback:
+                Clock.schedule_once(lambda dt: callback(obj_return))
+            else:
+                return obj_return
 
         img1_stat = False
         img2_stat = False
@@ -155,8 +161,6 @@ class FaceAiSvc:
             obj_return["msg"] = "More than one face found on image 1"
         else:
             obj_return["msg"] = "No face is found on image 1"
-        if not img1_stat:
-            return obj_return
 
         faces2, point2 = self.face_detect.detect(image2)
         if len(faces2) >= 1:
@@ -164,7 +168,7 @@ class FaceAiSvc:
         else:
             obj_return["msg"] = "No face is found in image 2"
 
-        if img2_stat:
+        if img2_stat and img1_stat:
             scores = []
             matches = []
             for face in faces2:
@@ -185,5 +189,9 @@ class FaceAiSvc:
             obj_return["stat"] = True
             obj_return["src"] = filename1
             obj_return["trgt"] = filename2
-        return obj_return
+        # return via callback or normal return
+        if callback:
+            Clock.schedule_once(lambda dt: callback(obj_return))
+        else:
+            return obj_return
 

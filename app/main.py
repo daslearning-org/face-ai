@@ -75,6 +75,7 @@ class FaceAiApp(MDApp):
         Window.bind(on_keyboard=self.events)
         self.face_ai = None
         self.txt_dialog = None
+        self.is_onnx_running = False
 
     def build(self):
         self.theme_cls.primary_palette = "Blue"
@@ -115,7 +116,9 @@ class FaceAiApp(MDApp):
         self.model_dir = os.path.join(self.internal_storage, 'model_files')
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
         self.last_upload_path = None
-        self.image_path = ""
+        self.src_image_path = None
+        self.trgt_image_path = None
+        self.download_file_path = None
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
@@ -158,17 +161,14 @@ class FaceAiApp(MDApp):
             self.show_toast_msg("Sesstions started successfully")
         except Exception as e:
             print(f"Could not start the sessions: {e}")
+            self.show_toast_msg("Couldn't start the services", is_error=True)
             self.face_ai = None
 
     def goto_face_matcher(self, instance=None):
         self.root.ids.screen_manager.current = "faceFindScr"
 
     def open_img_file_manager(self, instance=None):
-        if not self.face_ai:
-            self.show_toast_msg("Please start the session first!", is_error=True)
-            return
         try:
-            #self.img_file_manager.show(self.external_storage)  # native app specific path
             if not self.last_upload_path:
                 self.last_upload_path = self.external_storage
             filechooser.open_file(
@@ -178,7 +178,11 @@ class FaceAiApp(MDApp):
                 filters = [["*.JPG", "*.jpg", "*.png", "*.jpeg", "*.webp"], "*"],
                 preview = True,
             )
-            self.is_img_manager_open = True
+            self.is_inp_file_mgr_open = True
+            if instance == "btn_fm_src_upload":
+                self.img_purpose = "src"
+            elif instance == "btn_fm_tgt_upload":
+                self.img_purpose = "trgt"
         except Exception as e:
             self.show_toast_msg(f"Error: {e}", is_error=True)
 
@@ -186,7 +190,7 @@ class FaceAiApp(MDApp):
         '''
         Callback function for handling the image selection.
         '''
-        self.is_img_manager_open = False
+        self.is_inp_file_mgr_open = False
         if selection:
             image_path = str(selection[0])
             self.last_upload_path = os.path.dirname(image_path)
@@ -195,9 +199,76 @@ class FaceAiApp(MDApp):
     def select_img_path(self, path: str):
         if not path.endswith((".jpg", ".JPG", ".jpeg", ".JPEG", ".png", ".PNG", ".webp", ".WEBP")):
             self.show_toast_msg(f"Selected file: `{path}` is not an image", is_error=True)
-            self.image_path = ""
             return
-        self.image_path = path
+
+        fitImage = Image(
+            source = path,
+            fit_mode = "contain"
+        )
+
+        if self.img_purpose == "src":
+            uploaded_image_box = self.root.ids.face_match_scr.ids.fm_up_src_box
+            self.src_image_path = path
+        elif self.img_purpose == "trgt":
+            uploaded_image_box = self.root.ids.face_match_scr.ids.fm_up_trgt_box
+            self.trgt_image_path = path
+
+        uploaded_image_box.clear_widgets()
+        uploaded_image_box.add_widget(fitImage)
+
+    def submit_face_match(self, instance=None):
+        """
+        Performs the face match job in a separate thread with callback option.
+        """
+        if not self.face_ai:
+            self.show_toast_msg("Please start the session first!", is_error=True)
+            return
+        if self.is_onnx_running:
+            self.show_toast_msg("Please wait for the previous job to finish!", is_error=True)
+            return
+        if not self.src_image_path or not self.trgt_image_path:
+            self.show_toast_msg("Please upload both the source & target image", is_error=True)
+            return
+        onnx_thread = Thread(
+            target=self.face_ai.face_match_group,
+            kwargs={
+                "img1_path": self.src_image_path,
+                "img2_path": self.trgt_image_path,
+                "callback": self.face_match_callback
+            },
+            daemon=True
+        )
+        onnx_thread.start()
+        self.is_onnx_running = True
+
+    def face_match_callback(self, resp):
+        self.is_onnx_running = False
+        stat = resp["stat"]
+        msg = resp["msg"]
+        src = resp["src"]
+        trgt = resp["trgt"]
+        src_box = self.root.ids.face_match_scr.ids.fm_gen_src_box
+        trgt_box = self.root.ids.face_match_scr.ids.fm_gen_trgt_box
+        src_box.clear_widgets()
+        trgt_box.clear_widgets()
+        if stat:
+            srcImage = Image(
+                source = src,
+                fit_mode = "contain"
+            )
+            trgtImage = Image(
+                source = trgt,
+                fit_mode = "contain"
+            )
+            src_box.add_widget(srcImage)
+            trgt_box.add_widget(trgtImage)
+        else:
+            label = MDLabel(
+                text=msg,
+                halign="center",
+                #valign="top",
+                markup=True
+            )
 
 
     def events(self, instance, keyboard, keycode, text, modifiers):

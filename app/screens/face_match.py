@@ -36,7 +36,6 @@ Builder.load_string('''
         padding: dp(4)
 
         MDBoxLayout:
-            id: fm_up_src_box
             orientation: 'vertical'
 
             MDFillRoundFlatIconButton:
@@ -47,12 +46,13 @@ Builder.load_string('''
                 #md_bg_color: '#333036'
                 pos_hint: {"center_x": .5, "center_y": 1}
                 #size_hint_x: 0.2
-                on_release: app.open_img_file_manager(self)
+                on_release: app.open_img_file_manager("btn_fm_src_upload")
 
-            # add fit image here for source image
+            MDBoxLayout:
+                id: fm_up_src_box
+                # add fit image here for source image
 
         MDBoxLayout:
-            id: fm_up_trgt_box
             orientation: 'vertical'
 
             MDFillRoundFlatIconButton:
@@ -63,9 +63,11 @@ Builder.load_string('''
                 #md_bg_color: '#333036'
                 pos_hint: {"center_x": .5, "center_y": 1}
                 #size_hint_x: 0.2
-                on_release: app.open_img_file_manager(self)
+                on_release: app.open_img_file_manager("btn_fm_tgt_upload")
 
-            # add fit image here for source image
+            MDBoxLayout:
+                id: fm_up_trgt_box
+                # add fit image here for source image
 
     MDGridLayout: # buttons
         cols: 3
@@ -81,7 +83,7 @@ Builder.load_string('''
             md_bg_color: 'orange'
             pos_hint: {"center_x": .5, "center_y": .5}
             size_hint_x: 0.6
-            on_release: app.submit_onnx_detect()
+            on_release: app.submit_face_match()
 
         MDFillRoundFlatIconButton:
             id: btn_reset
