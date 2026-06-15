@@ -9,7 +9,7 @@ from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.navigationdrawer import MDNavigationDrawerMenu
 from kivymd.uix.menu import MDDropdownMenu
-#from kivymd.uix.filemanager import MDFileManager
+from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDFloatingActionButton
@@ -19,6 +19,7 @@ from kivy.utils import platform
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
 from kivy.lang import Builder
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty
 
@@ -50,7 +51,10 @@ if platform == "android":
     from jnius import autoclass, PythonJavaClass, java_method
 
 ## -- kivy custom classes -- ##
-## define custom kivymd classes
+
+class ImageWithAction(ButtonBehavior, Image):
+    img_type = StringProperty("none")
+
 class ContentNavigationDrawer(MDNavigationDrawerMenu):
     screen_manager = ObjectProperty()
     nav_drawer = ObjectProperty()
@@ -81,6 +85,7 @@ class FaceAiApp(MDApp):
         self.txt_dialog = None
         self.is_onnx_running = False
         self.models_ok = False
+        self.last_instance = None
 
     def build(self):
         self.theme_cls.primary_palette = "Blue"
@@ -121,16 +126,24 @@ class FaceAiApp(MDApp):
         self.model_dir = os.path.join(self.internal_storage, 'model_files')
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
         self.last_upload_path = None
+        self.last_downlaod_path = None
         self.src_image_path = None
         self.trgt_image_path = None
         self.download_file_path = None
+        self.delete_file_path = None
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
         self.detect_model_path = os.path.join(self.model_dir, "faceai", "det_10g.onnx")
         self.recog_model_path = os.path.join(self.model_dir, "faceai","arc.onnx")
         self.is_inp_file_mgr_open = False
-        self.is_out_file_mgr_open = False
+        self.is_op_file_mgr_open = False
+        self.op_file_manager = MDFileManager(
+            exit_manager=self.op_file_exit_manager,
+            select_path=self.select_op_path,
+            selector="folder",  # Restrict to selecting directories only
+        )
+        # check if model files are present
         Clock.schedule_once(lambda dt: self.model_existance_check())
         print("Init success...")
 
@@ -156,7 +169,7 @@ class FaceAiApp(MDApp):
         )
         self.txt_dialog.open()
 
-    def txt_dialog_closer(self, instance):
+    def txt_dialog_closer(self, instance=None):
         if self.txt_dialog:
             self.txt_dialog.dismiss()
 
@@ -361,14 +374,18 @@ class FaceAiApp(MDApp):
         src_box.clear_widgets()
         trgt_box.clear_widgets()
         if stat:
-            srcImage = Image(
+            srcImage = ImageWithAction(
                 source = src,
                 fit_mode = "contain"
             )
-            trgtImage = Image(
+            trgtImage = ImageWithAction(
                 source = trgt,
                 fit_mode = "contain"
             )
+            srcImage.img_type = "src"
+            trgtImage.img_type = "trgt"
+            srcImage.bind(on_release=self.download_image_from_view)
+            trgtImage.bind(on_release=self.download_image_from_view)
             src_box.add_widget(srcImage)
             trgt_box.add_widget(trgtImage)
         else:
@@ -379,6 +396,108 @@ class FaceAiApp(MDApp):
                 markup=True
             )
             src_box.add_widget(label)
+
+    def download_image_from_view(self, instance=None):
+        if instance:
+            self.download_file_path = instance.source
+            self.delete_file_path = instance.source
+            self.last_instance = instance
+            self.show_text_dialog(
+                title="Download or Delete?",
+                text=f"You can downlaod or delete this file",
+                buttons=[
+                    MDFlatButton(
+                        text="Canel",
+                        theme_text_color="Custom",
+                        text_color="blue",
+                        on_release=self.txt_dialog_closer
+                    ),
+                    MDFlatButton(
+                        text="Download",
+                        theme_text_color="Custom",
+                        text_color="green",
+                        on_release=self.download_from_app_local
+                    ),
+                    MDFlatButton(
+                        text="DELETE",
+                        theme_text_color="Custom",
+                        text_color="red",
+                        on_release=self.delete_selected_file
+                    ),
+                ],
+            )
+
+    def download_from_app_local(self, instance=None):
+        self.txt_dialog_closer()
+        if self.download_file_path:
+            #dir_name = os.path.dirname(self.download_file_path)
+            if not self.last_downlaod_path:
+                self.last_downlaod_path = str(self.external_storage)
+            self.op_file_manager.show(self.last_downlaod_path)
+            self.is_op_file_mgr_open = True
+
+    def select_op_path(self, path: str):
+        """
+        Called when a directory is selected. Save the Output file.
+        """
+        self.op_file_exit_manager()
+        filename = os.path.basename(self.download_file_path)
+        dir_name = os.path.dirname(self.download_file_path)
+        self.last_downlaod_path = dir_name
+        chosen_path = os.path.join(path, filename) # destination path
+        import shutil
+        try:
+            shutil.copyfile(self.download_file_path, chosen_path)
+            print(f"File successfully download to: {chosen_path}")
+            self.show_toast_msg(f"File download to: {chosen_path}")
+            self.delete_file_path = str(self.download_file_path)
+            self.download_file_path = None
+            self.delete_file_popup()
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            self.show_toast_msg(f"Error saving file: {e}", is_error=True)
+
+    def op_file_exit_manager(self, *args):
+        """Called when the user reaches the root of the directory tree."""
+        self.is_op_file_mgr_open = False
+        self.op_file_manager.close()
+
+    def delete_file_popup(self, instance=None):
+        filename = os.path.basename(self.delete_file_path)
+        self.show_text_dialog(
+            title="Delete the file?",
+            text=f"Your download {filename} was successful. You can now Delete the file.",
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    theme_text_color="Custom",
+                    text_color="blue",
+                    on_release=self.txt_dialog_closer
+                ),
+                MDFlatButton(
+                    text="DELETE",
+                    theme_text_color="Custom",
+                    text_color="red",
+                    on_release=self.delete_selected_file
+                ),
+            ],
+        )
+
+    def delete_selected_file(self, instance=None):
+        self.txt_dialog_closer()
+        if self.delete_file_path:
+            try:
+                os.remove(self.delete_file_path)
+                self.show_toast_msg(f"Deleted: {self.delete_file_path}")
+                print(f"Deleted: {self.delete_file_path}")
+                self.delete_file_path = None
+                self.download_file_path = None
+                if self.last_instance and self.last_instance.parent:
+                    self.last_instance.parent.remove_widget(self.last_instance)
+                    self.last_instance = None
+            except Exception as e:
+                print(f"Error while deleting {self.delete_file_path} because: {e}")
+                self.show_toast_msg(f"Error while deleting {self.delete_file_path} because: {e}", is_error=True)
 
     def reset_face_matcher(self, instance=None):
         self.src_image_path = None
@@ -393,7 +512,7 @@ class FaceAiApp(MDApp):
         upload_src_box.clear_widgets()
         upload_trgt_box.clear_widgets()
 
-    def show_delete_alert(self):
+    def show_all_delete_alert(self):
         op_img_count = 0
         for filename in os.listdir(self.op_dir):
             if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
@@ -412,12 +531,12 @@ class FaceAiApp(MDApp):
                     text="DELETE",
                     theme_text_color="Custom",
                     text_color="red",
-                    on_release=self.delete_op_action
+                    on_release=self.delete_all_op_action
                 ),
             ],
         )
 
-    def delete_op_action(self, instance):
+    def delete_all_op_action(self, instance):
         # Custom function called when DISCARD is clicked
         for filename in os.listdir(self.op_dir):
             if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
@@ -458,6 +577,9 @@ class FaceAiApp(MDApp):
             f"Your version: {__version__}",
             buttons
         )
+
+    def on_pause(self):
+        return True
 
     def events(self, instance, keyboard, keycode, text, modifiers):
         """Handle mobile device button presses (e.g., Android back button)."""

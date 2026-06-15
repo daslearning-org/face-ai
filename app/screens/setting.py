@@ -33,7 +33,7 @@ Builder.load_string('''
                 MDList:
                     OneLineIconListItem:
                         text: "Delete all output images"
-                        on_release: app.show_delete_alert()
+                        on_release: app.show_all_delete_alert()
                         IconLeftWidget:
                             icon: "broom"
 
