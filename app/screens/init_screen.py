@@ -24,7 +24,7 @@ Builder.load_string('''
 <InitBox>:
     orientation: 'vertical'
     spacing: dp(20)
-    padding: 8, 16, 8, 0 #self.bottom_pad # left, top, right, bottom
+    padding: 8, 16, 8, self.bottom_pad # left, top, right, bottom
 
     MDGridLayout: # download section
         cols: 1

@@ -9,7 +9,7 @@ from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.navigationdrawer import MDNavigationDrawerMenu
 from kivymd.uix.menu import MDDropdownMenu
-#from kivymd.uix.filemanager import MDFileManager
+from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDFloatingActionButton
@@ -19,6 +19,7 @@ from kivy.utils import platform
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
 from kivy.lang import Builder
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty
 
@@ -48,9 +49,13 @@ kv_file_path = os.path.join(base_path, 'main_layout.kv')
 # imprt platform specific modules
 if platform == "android":
     from jnius import autoclass, PythonJavaClass, java_method
+    from android.permissions import check_permission, request_permissions, Permission
 
 ## -- kivy custom classes -- ##
-## define custom kivymd classes
+
+class ImageWithAction(ButtonBehavior, Image):
+    img_type = StringProperty("none")
+
 class ContentNavigationDrawer(MDNavigationDrawerMenu):
     screen_manager = ObjectProperty()
     nav_drawer = ObjectProperty()
@@ -81,6 +86,10 @@ class FaceAiApp(MDApp):
         self.txt_dialog = None
         self.is_onnx_running = False
         self.models_ok = False
+        self.last_instance = None
+        self.user_preferences = {
+            "fm_dont_again": False
+        }
 
     def build(self):
         self.theme_cls.primary_palette = "Blue"
@@ -89,8 +98,9 @@ class FaceAiApp(MDApp):
 
     def on_start(self):
         # paths setup
+        file_m_height = 1
         if platform == "android":
-            from android.permissions import request_permissions, Permission
+            file_m_height = 0.9
             from android.storage import app_storage_path
             sdk_version = 28
             try:
@@ -101,12 +111,12 @@ class FaceAiApp(MDApp):
             except Exception as e:
                 print(f"Could not check the android SDK version: {e}")
                 #self.show_toast_msg(f"Error checking SDK: {e}", is_error=True)
-            self.permissions = [Permission.CAMERA]
+            self.android_permissions = [] #Permission.CAMERA
             if sdk_version >= 33:  # Android 13+
-                self.permissions.append(Permission.READ_MEDIA_IMAGES)
+                self.android_permissions.append(Permission.READ_MEDIA_IMAGES)
             else:  # Android 9–12
-                self.permissions.extend([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
-            request_permissions(self.permissions)
+                self.android_permissions.extend([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
+            request_permissions(self.android_permissions)
             self.internal_storage = app_storage_path()
             try:
                 Environment = autoclass("android.os.Environment")
@@ -120,19 +130,110 @@ class FaceAiApp(MDApp):
         # remaining start activities
         self.model_dir = os.path.join(self.internal_storage, 'model_files')
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
+        self.config_dir = os.path.join(self.internal_storage, 'config')
         self.last_upload_path = None
+        self.last_downlaod_path = None
         self.src_image_path = None
         self.trgt_image_path = None
         self.download_file_path = None
+        self.delete_file_path = None
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
+        os.makedirs(self.config_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
+        self.config_path = os.path.join(self.config_dir, 'config.json')
+        self.resp_path = os.path.join(self.config_dir, 'resp.json')
+        self.usr_pref_path = os.path.join(self.config_dir, 'preferences.json')
         self.detect_model_path = os.path.join(self.model_dir, "faceai", "det_10g.onnx")
         self.recog_model_path = os.path.join(self.model_dir, "faceai","arc.onnx")
         self.is_inp_file_mgr_open = False
-        self.is_out_file_mgr_open = False
+        self.is_op_file_mgr_open = False
+        # folder manager for downloading
+        self.op_file_manager = MDFileManager(
+            exit_manager=self.op_file_exit_manager,
+            select_path=self.select_op_path,
+            selector="folder",  # Restrict to selecting directories only
+            size_hint_y=file_m_height,
+        )
+        # load / write user preferences at app start
+        if os.path.exists(self.usr_pref_path):
+            with open(self.usr_pref_path, "r") as pf:
+                old_pref = json.load(pf)
+            self.user_preferences["fm_dont_again"] = old_pref.get("fm_dont_again", False)
+        else:
+            with open(self.usr_pref_path, "w") as pf:
+                json.dump(self.user_preferences, pf)
+        # check if model files are present
         Clock.schedule_once(lambda dt: self.model_existance_check())
         print("Init success...")
+
+    def check_request_android_permission(self):
+        if platform == "android":
+            permission_flag = True
+            for permission in self.android_permissions:
+                tmp_flag = check_permission(permission)
+                if not tmp_flag:
+                    permission_flag = False
+                    break
+            if not permission_flag:
+                request_permissions(self.android_permissions, self.permission_callback)
+            return permission_flag
+        else:
+            return True
+
+    def permission_callback(self, permissions, results):
+        # results is a list of booleans corresponding to requested permissions
+        usr_deny_flag = False
+        if False in results:
+            # the user checked "Don't ask again" or denied it twice.
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            current_activity = PythonActivity.mActivity
+            # Check rationale status via Android API
+            for permission in permissions:
+                should_show = current_activity.shouldShowRequestPermissionRationale(permission)
+                if not should_show:
+                    usr_deny_flag = True
+                    break
+            if usr_deny_flag:
+                # User denied twice / blocked permanently! Show redirect popup.
+                print("Permission is denied by user!")
+                Clock.schedule_once(lambda dt: self.show_settings_popup())
+
+    def show_settings_popup(self):
+        buttons = [
+            MDFlatButton(
+                text="Cancel",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                on_release=self.txt_dialog_closer
+            ),
+            MDFlatButton(
+                text="Open Settings",
+                theme_text_color="Custom",
+                text_color="orange",
+                on_release=self.open_android_settings
+            ),
+        ]
+        self.show_text_dialog(
+            "Permissions Missing",
+            "Please grant the permissions from Settings.",
+            buttons
+        )
+
+    def open_android_settings(self, instance=None):
+        self.txt_dialog_closer()
+        # Target Android Native Intents
+        Intent = autoclass('android.content.Intent')
+        Settings = autoclass('android.provider.Settings')
+        Uri = autoclass('android.net.Uri')
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        # Create intent to open this specific app's settings details
+        activity = PythonActivity.mActivity
+        intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        uri = Uri.fromParts("package", activity.getPackageName(), None)
+        intent.setData(uri)
+        # Launch settings
+        activity.startActivity(intent)
 
     def show_toast_msg(self, message, is_error=False, duration=3):
         from kivymd.uix.snackbar import MDSnackbar
@@ -156,7 +257,7 @@ class FaceAiApp(MDApp):
         )
         self.txt_dialog.open()
 
-    def txt_dialog_closer(self, instance):
+    def txt_dialog_closer(self, instance=None):
         if self.txt_dialog:
             self.txt_dialog.dismiss()
 
@@ -253,6 +354,7 @@ class FaceAiApp(MDApp):
             return
 
     def start_face_services(self, instance=None):
+        self.txt_dialog_closer()
         if self.models_ok and self.face_ai:
             self.show_toast_msg("Session is already active")
         if os.path.exists(self.detect_model_path) and os.path.exists(self.recog_model_path):
@@ -277,6 +379,9 @@ class FaceAiApp(MDApp):
         self.root.ids.screen_manager.current = "faceFindScr"
 
     def open_img_file_manager(self, instance=None):
+        permissions_ok = self.check_request_android_permission()
+        if not permissions_ok:
+            return
         try:
             if not self.last_upload_path:
                 self.last_upload_path = self.external_storage
@@ -330,7 +435,24 @@ class FaceAiApp(MDApp):
         Performs the face match job in a separate thread with callback option.
         """
         if not self.face_ai:
-            self.show_toast_msg("Please start the session first!", is_error=True)
+            self.show_text_dialog(
+                title="Service is not started",
+                text=f"Do you want to start the service?.",
+                buttons=[
+                    MDFlatButton(
+                        text="Cancel",
+                        theme_text_color="Custom",
+                        text_color="blue",
+                        on_release=self.txt_dialog_closer
+                    ),
+                    MDFlatButton(
+                        text="START",
+                        theme_text_color="Custom",
+                        text_color="green",
+                        on_release=self.start_face_services
+                    ),
+                ],
+            )
             return
         if self.is_onnx_running:
             self.show_toast_msg("Please wait for the previous job to finish!", is_error=True)
@@ -361,14 +483,18 @@ class FaceAiApp(MDApp):
         src_box.clear_widgets()
         trgt_box.clear_widgets()
         if stat:
-            srcImage = Image(
+            srcImage = ImageWithAction(
                 source = src,
                 fit_mode = "contain"
             )
-            trgtImage = Image(
+            trgtImage = ImageWithAction(
                 source = trgt,
                 fit_mode = "contain"
             )
+            srcImage.img_type = "src"
+            trgtImage.img_type = "trgt"
+            srcImage.bind(on_release=self.download_image_from_view)
+            trgtImage.bind(on_release=self.download_image_from_view)
             src_box.add_widget(srcImage)
             trgt_box.add_widget(trgtImage)
         else:
@@ -379,6 +505,108 @@ class FaceAiApp(MDApp):
                 markup=True
             )
             src_box.add_widget(label)
+
+    def download_image_from_view(self, instance=None):
+        if instance:
+            self.download_file_path = instance.source
+            self.delete_file_path = instance.source
+            self.last_instance = instance
+            self.show_text_dialog(
+                title="Download or Delete?",
+                text=f"You can downlaod or delete this file",
+                buttons=[
+                    MDFlatButton(
+                        text="Canel",
+                        theme_text_color="Custom",
+                        text_color="blue",
+                        on_release=self.txt_dialog_closer
+                    ),
+                    MDFlatButton(
+                        text="Download",
+                        theme_text_color="Custom",
+                        text_color="green",
+                        on_release=self.download_from_app_local
+                    ),
+                    MDFlatButton(
+                        text="DELETE",
+                        theme_text_color="Custom",
+                        text_color="red",
+                        on_release=self.delete_selected_file
+                    ),
+                ],
+            )
+
+    def download_from_app_local(self, instance=None):
+        self.txt_dialog_closer()
+        if self.download_file_path:
+            #dir_name = os.path.dirname(self.download_file_path)
+            if not self.last_downlaod_path:
+                self.last_downlaod_path = str(self.external_storage)
+            self.op_file_manager.show(self.last_downlaod_path)
+            self.is_op_file_mgr_open = True
+
+    def select_op_path(self, path: str):
+        """
+        Called when a directory is selected. Save the Output file.
+        """
+        self.op_file_exit_manager()
+        filename = os.path.basename(self.download_file_path)
+        dir_name = os.path.dirname(path)
+        self.last_downlaod_path = dir_name
+        chosen_path = os.path.join(path, filename) # destination path
+        import shutil
+        try:
+            shutil.copyfile(self.download_file_path, chosen_path)
+            print(f"File successfully download to: {chosen_path}")
+            self.show_toast_msg(f"File download to: {chosen_path}")
+            self.delete_file_path = str(self.download_file_path)
+            self.download_file_path = None
+            self.delete_file_popup()
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            self.show_toast_msg(f"Error saving file: {e}", is_error=True)
+
+    def op_file_exit_manager(self, *args):
+        """Called when the user reaches the root of the directory tree."""
+        self.is_op_file_mgr_open = False
+        self.op_file_manager.close()
+
+    def delete_file_popup(self, instance=None):
+        filename = os.path.basename(self.delete_file_path)
+        self.show_text_dialog(
+            title="Delete the file?",
+            text=f"Your download {filename} was successful. You can now Delete the file.",
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    theme_text_color="Custom",
+                    text_color="blue",
+                    on_release=self.txt_dialog_closer
+                ),
+                MDFlatButton(
+                    text="DELETE",
+                    theme_text_color="Custom",
+                    text_color="red",
+                    on_release=self.delete_selected_file
+                ),
+            ],
+        )
+
+    def delete_selected_file(self, instance=None):
+        self.txt_dialog_closer()
+        if self.delete_file_path:
+            try:
+                os.remove(self.delete_file_path)
+                self.show_toast_msg(f"Deleted: {self.delete_file_path}")
+                print(f"Deleted: {self.delete_file_path}")
+                self.delete_file_path = None
+                self.download_file_path = None
+                if self.last_instance and self.last_instance.parent:
+                    self.last_instance.parent.remove_widget(self.last_instance)
+                    self.last_instance = None
+            except Exception as e:
+                print(f"Error while deleting {self.delete_file_path} because: {e}")
+                self.show_toast_msg(f"Error while deleting {self.delete_file_path} because: {e}", is_error=True)
 
     def reset_face_matcher(self, instance=None):
         self.src_image_path = None
@@ -393,7 +621,7 @@ class FaceAiApp(MDApp):
         upload_src_box.clear_widgets()
         upload_trgt_box.clear_widgets()
 
-    def show_delete_alert(self):
+    def show_all_delete_alert(self):
         op_img_count = 0
         for filename in os.listdir(self.op_dir):
             if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
@@ -412,12 +640,12 @@ class FaceAiApp(MDApp):
                     text="DELETE",
                     theme_text_color="Custom",
                     text_color="red",
-                    on_release=self.delete_op_action
+                    on_release=self.delete_all_op_action
                 ),
             ],
         )
 
-    def delete_op_action(self, instance):
+    def delete_all_op_action(self, instance):
         # Custom function called when DISCARD is clicked
         for filename in os.listdir(self.op_dir):
             if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
@@ -429,6 +657,7 @@ class FaceAiApp(MDApp):
                     print(f"Could not delete the audion files, error: {e}")
         self.show_toast_msg("Executed the audio cleanup!")
         self.txt_dialog_closer(instance)
+        # Will add a cleanup option for the generated options on screen.
 
     def open_link(self, instance, url):
         import webbrowser
@@ -458,6 +687,9 @@ class FaceAiApp(MDApp):
             f"Your version: {__version__}",
             buttons
         )
+
+    def on_pause(self):
+        return True
 
     def events(self, instance, keyboard, keycode, text, modifiers):
         """Handle mobile device button presses (e.g., Android back button)."""
