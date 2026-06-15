@@ -98,7 +98,9 @@ class FaceAiApp(MDApp):
 
     def on_start(self):
         # paths setup
+        file_m_height = 1
         if platform == "android":
+            file_m_height = 0.9
             from android.storage import app_storage_path
             sdk_version = 28
             try:
@@ -151,6 +153,7 @@ class FaceAiApp(MDApp):
             exit_manager=self.op_file_exit_manager,
             select_path=self.select_op_path,
             selector="folder",  # Restrict to selecting directories only
+            size_hint_y=file_m_height,
         )
         # load / write user preferences at app start
         if os.path.exists(self.usr_pref_path):

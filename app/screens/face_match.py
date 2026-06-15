@@ -4,7 +4,9 @@ from kivy.metrics import dp, sp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.button import MDFillRoundFlatIconButton
-
+from kivy.properties import StringProperty, NumericProperty, ObjectProperty
+from kivy.metrics import dp, sp
+from kivy.utils import platform
 
 Builder.load_string('''
 <TempSpinWait>:
@@ -24,8 +26,9 @@ Builder.load_string('''
         active: True
 
 
-<FaceMatchBox@MDBoxLayout>:
+<FaceMatchBox>:
     orientation: 'vertical'
+    padding: 0, 0, 0, self.bottom_pad
     spacing: dp(4)
 
     MDGridLayout: # original image
@@ -118,6 +121,18 @@ class TempSpinWait(MDBoxLayout):
     pass
 
 class FaceMatchBox(MDBoxLayout):
+    top_pad = NumericProperty(0)
+    bottom_pad = NumericProperty(0)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = "face_match_box"
+        self.name = "settings_main_bx"
+        if platform == "android":
+            try:
+                from android.display_cutout import get_height_of_bar
+                self.top_pad = int(get_height_of_bar('status'))
+                self.bottom_pad = int(get_height_of_bar('navigation'))
+            except Exception as e:
+                print(f"Failed android 15 padding: {e}")
+                self.top_pad = 32
+                self.bottom_pad = 48
