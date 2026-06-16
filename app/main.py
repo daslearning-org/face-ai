@@ -197,6 +197,7 @@ class FaceAiApp(MDApp):
             json.dump(configData, pf)
 
     def set_usr_pref(self, instance=None):
+        self.txt_dialog_closer()
         saveFlag = False
         if self.root.ids.screen_manager.current == "faceFindScr":
             self.user_preferences["fm_dont_again"] = True
@@ -446,7 +447,7 @@ class FaceAiApp(MDApp):
         ]
         self.show_text_dialog(
             "Instructions",
-            "Upload an image with Single Face as Source image & any image with one or more Faces as Target image.",
+            "Upload an image with Single Face as Source image & any image with one or more Faces as Target image. Once the tace tagged images are generated, you can tap on that to Downlaod or Delete.",
             buttons
         )
 
@@ -547,9 +548,10 @@ class FaceAiApp(MDApp):
         )
         onnx_thread.start()
         self.is_onnx_running = True
-        spinner = TempSpinWait()
-        src_box.add_widget(spinner)
-        trgt_box.add_widget(spinner)
+        spinner1 = TempSpinWait()
+        spinner2 = TempSpinWait()
+        src_box.add_widget(spinner1)
+        trgt_box.add_widget(spinner2)
 
     def face_match_callback(self, resp):
         self.is_onnx_running = False
