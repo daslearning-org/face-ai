@@ -37,7 +37,8 @@ version.filename = %(source.dir)s/main.py
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.1, kivymd==1.2.0, pyjnius, android, docutils, filetype, pillow, Pygments, requests, plyer, coloredlogs, flatbuffers, packaging, numpy, opencv, mpmath, protobuf, sympy, onnxruntime
+requirements = python3, kivy==2.3.1, kivymd==1.2.0, pyjnius, android, docutils, filetype, pillow, Pygments, requests, plyer, flatbuffers, packaging, numpy, opencv, protobuf, onnxruntime
+# coloredlogs, mpmath, sympy
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
