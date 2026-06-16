@@ -192,7 +192,7 @@ class FaceAiApp(MDApp):
             self.wake_lock = None
             print("WakeLock released")
 
-    def save_config_file(self, configData, filepath:str):
+    def save_config_file(self, configData:dict, filepath:str):
         with open(filepath, "w") as pf:
             json.dump(configData, pf)
 
@@ -204,14 +204,7 @@ class FaceAiApp(MDApp):
             saveFlag = True
         # save the file
         if saveFlag:
-            Thread(
-                target=self.save_config_file,
-                kwargs={
-                    "configData": self.user_preferences,
-                    "filepath": self.usr_pref_path
-                },
-                daemon=True
-            ).run()
+            Clock.schedule_once(lambda dt: self.save_config_file(self.user_preferences, self.usr_pref_path))
 
     def check_request_android_permission(self):
         if platform == "android":
@@ -447,7 +440,7 @@ class FaceAiApp(MDApp):
         ]
         self.show_text_dialog(
             "Instructions",
-            "Upload an image with Single Face as Source image & any image with one or more Faces as Target image. Once the tace tagged images are generated, you can tap on that to Downlaod or Delete.",
+            "Upload an image with Single Face as Source image & any image with one or more Faces as Target image. Once the face tagged images are generated, you can tap on that to Downlaod or Delete.",
             buttons
         )
 
