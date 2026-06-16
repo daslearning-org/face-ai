@@ -78,7 +78,7 @@ MDScreen:
 
                 MDScreen:
                     name: "faceFindScr"
-                    #on_enter: app.acquire_wakelock()
+                    on_enter: app.on_face_matcher_entry()
                     #on_leave: app.release_wakelock()
                     FaceMatchBox:
                         id: face_match_scr

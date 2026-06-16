@@ -50,13 +50,8 @@ Builder.load_string('''
             MDScrollView:
                 MDList:
                     OneLineIconListItem:
-                        text: "Demo (How to use)"
-                        on_release: app.open_link(self, "https://youtube.com/watch?v=UGAxZFuZRtc")
-                        IconLeftWidget:
-                            icon: "youtube"
-                    OneLineIconListItem:
                         text: "Documentation (Blog)"
-                        on_release: app.open_link(self, "https://blog.daslearning.in/microcontroller/esp32/automatic-vehicle-indicator.html")
+                        on_release: app.open_link(self, "https://blog.daslearning.in/llm_ai/ml/face-ai.html")
                         IconLeftWidget:
                             icon: "file-document-check"
                     OneLineIconListItem:

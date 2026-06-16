@@ -40,6 +40,7 @@ Builder.load_string('''
 
         MDBoxLayout:
             orientation: 'vertical'
+            spacing: dp(4)
 
             MDFillRoundFlatIconButton:
                 id: btn_fm_src_upload

@@ -8,7 +8,7 @@ import requests
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.navigationdrawer import MDNavigationDrawerMenu
-from kivymd.uix.menu import MDDropdownMenu
+#from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
@@ -46,9 +46,9 @@ else:
     base_path = os.path.dirname(os.path.abspath(__file__))
 kv_file_path = os.path.join(base_path, 'main_layout.kv')
 
-# imprt platform specific modules
+# import platform specific modules
 if platform == "android":
-    from jnius import autoclass, PythonJavaClass, java_method
+    from jnius import autoclass, cast, PythonJavaClass, java_method
     from android.permissions import check_permission, request_permissions, Permission
 
 ## -- kivy custom classes -- ##
@@ -87,6 +87,7 @@ class FaceAiApp(MDApp):
         self.is_onnx_running = False
         self.models_ok = False
         self.last_instance = None
+        self.wake_lock = None
         self.user_preferences = {
             "fm_dont_again": False
         }
@@ -166,6 +167,50 @@ class FaceAiApp(MDApp):
         # check if model files are present
         Clock.schedule_once(lambda dt: self.model_existance_check())
         print("Init success...")
+
+    def acquire_wakelock(self):
+        if self.wake_lock:
+            return  # already acquired
+        try:
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            Context = autoclass("android.content.Context")
+            activity = PythonActivity.mActivity
+            PowerManager = autoclass("android.os.PowerManager")
+            power_manager = cast(PowerManager, activity.getSystemService(Context.POWER_SERVICE))
+            # Create wakelock (use PowerManager.FULL_WAKE_LOCK for full wakelock)
+            self.wake_lock = power_manager.newWakeLock(
+                PowerManager.FULL_WAKE_LOCK, "MyApp::WakeLockTag"
+            )
+            self.wake_lock.acquire()
+            print("WakeLock acquired")
+        except Exception as e:
+            print(f"Wake lock aquire error: {e}")
+
+    def release_wakelock(self):
+        if self.wake_lock and self.wake_lock.isHeld():
+            self.wake_lock.release()
+            self.wake_lock = None
+            print("WakeLock released")
+
+    def save_config_file(self, configData, filepath:str):
+        with open(filepath, "w") as pf:
+            json.dump(configData, pf)
+
+    def set_usr_pref(self, instance=None):
+        saveFlag = False
+        if self.root.ids.screen_manager.current == "faceFindScr":
+            self.user_preferences["fm_dont_again"] = True
+            saveFlag = True
+        # save the file
+        if saveFlag:
+            Thread(
+                target=self.save_config_file,
+                kwargs={
+                    "configData": self.user_preferences,
+                    "filepath": self.usr_pref_path
+                },
+                daemon=True
+            ).run()
 
     def check_request_android_permission(self):
         if platform == "android":
@@ -270,7 +315,7 @@ class FaceAiApp(MDApp):
                 on_release=self.txt_dialog_closer
             ),
             MDFlatButton(
-                text="Ok",
+                text="Download",
                 theme_text_color="Custom",
                 text_color="green",
                 on_release=self.start_model_download
@@ -278,7 +323,7 @@ class FaceAiApp(MDApp):
         ]
         self.show_text_dialog(
             "Download model files",
-            "You need to downlaod the models first.",
+            "You need to downlaod the models first (~140MB).",
             buttons
         )
 
@@ -290,6 +335,8 @@ class FaceAiApp(MDApp):
             os.remove(filepath)
             self.show_toast_msg("Model files have been downloaded successfully.")
             self.is_downloading = False
+            if platform == "android":
+                Clock.schedule_once(lambda dt: self.release_wakelock())
         except Exception as e:
             print(f"Unzip error: {e}")
 
@@ -342,6 +389,8 @@ class FaceAiApp(MDApp):
         if self.is_downloading:
             self.show_toast_msg("Please wait for the download to finish", is_error=True)
             return
+        if platform == "android":
+            Clock.schedule_once(lambda dt: self.acquire_wakelock())
         download_path = os.path.join(self.model_dir, "faceai.tar.gz")
         model_url = "https://github.com/daslearning-org/face-ai/releases/download/vOnnxModels/faceai.tar.gz"
         self.download_model_file(model_url, download_path)
@@ -377,6 +426,29 @@ class FaceAiApp(MDApp):
 
     def goto_face_matcher(self, instance=None):
         self.root.ids.screen_manager.current = "faceFindScr"
+
+    def on_face_matcher_entry(self, instance=None):
+        if self.user_preferences["fm_dont_again"]:
+            return
+        buttons = [
+            MDFlatButton(
+                text="Don't Show Again",
+                theme_text_color="Custom",
+                text_color='orange',
+                on_release=self.set_usr_pref
+            ),
+            MDFlatButton(
+                text="Ok",
+                theme_text_color="Custom",
+                text_color="green",
+                on_release=self.txt_dialog_closer
+            ),
+        ]
+        self.show_text_dialog(
+            "Instructions",
+            "Upload an image with Single Face as Source image & any image with one or more Faces as Target image.",
+            buttons
+        )
 
     def open_img_file_manager(self, instance=None):
         permissions_ok = self.check_request_android_permission()
@@ -460,6 +532,10 @@ class FaceAiApp(MDApp):
         if not self.src_image_path or not self.trgt_image_path:
             self.show_toast_msg("Please upload both the source & target image", is_error=True)
             return
+        src_box = self.root.ids.face_match_scr.ids.fm_gen_src_box
+        trgt_box = self.root.ids.face_match_scr.ids.fm_gen_trgt_box
+        src_box.clear_widgets()
+        trgt_box.clear_widgets()
         onnx_thread = Thread(
             target=self.face_ai.face_match_group,
             kwargs={
@@ -471,6 +547,9 @@ class FaceAiApp(MDApp):
         )
         onnx_thread.start()
         self.is_onnx_running = True
+        spinner = TempSpinWait()
+        src_box.add_widget(spinner)
+        trgt_box.add_widget(spinner)
 
     def face_match_callback(self, resp):
         self.is_onnx_running = False
@@ -522,16 +601,16 @@ class FaceAiApp(MDApp):
                         on_release=self.txt_dialog_closer
                     ),
                     MDFlatButton(
-                        text="Download",
-                        theme_text_color="Custom",
-                        text_color="green",
-                        on_release=self.download_from_app_local
-                    ),
-                    MDFlatButton(
                         text="DELETE",
                         theme_text_color="Custom",
                         text_color="red",
                         on_release=self.delete_selected_file
+                    ),
+                    MDFlatButton(
+                        text="Download",
+                        theme_text_color="Custom",
+                        text_color="green",
+                        on_release=self.download_from_app_local
                     ),
                 ],
             )
@@ -693,7 +772,17 @@ class FaceAiApp(MDApp):
 
     def events(self, instance, keyboard, keycode, text, modifiers):
         """Handle mobile device button presses (e.g., Android back button)."""
-        #if keyboard in (1001, 27):
+        if keyboard in (1001, 27):
+            # control file manager with back btn on android
+            if self.is_op_file_mgr_open:
+                if self.op_file_manager.current_path == self.external_storage:
+                    self.show_toast_msg(f"Closing file manager from main storage")
+                    self.op_file_exit_manager()
+                else:
+                    self.op_file_manager.back() # go one dir back
+                # stop app from exiting
+                return True
+        # exits from app
         return False
 
 ## -- run the app -- ##
