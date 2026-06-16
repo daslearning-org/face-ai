@@ -582,7 +582,7 @@ class FaceAiApp(MDApp):
             label = MDLabel(
                 text=msg,
                 halign="center",
-                #valign="top",
+                valign="center",
                 markup=True
             )
             src_box.add_widget(label)

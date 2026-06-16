@@ -158,15 +158,15 @@ class FaceAiSvc:
             face1 = crop_with_buffer(image1, faces1[0])
             face1_emb = self.face_recog.get_face_embedding(face1)
         elif len(faces1) >= 2:
-            obj_return["msg"] = "More than one face found on image 1"
+            obj_return["msg"] = "[color=#f58e2f]More than one face found in [b]Source Image[/b][/color]"
         else:
-            obj_return["msg"] = "No face is found on image 1"
+            obj_return["msg"] = "[color=#f58e2f]No face is found in [b]Source Image[b][/color]"
 
         faces2, point2 = self.face_detect.detect(image2)
         if len(faces2) >= 1:
             img2_stat = True
         else:
-            obj_return["msg"] = "No face is found in image 2"
+            obj_return["msg"] = "[color=#f58e2f]No face is found in [b]Target Image[/b][/color]"
 
         if img2_stat and img1_stat:
             scores = []
