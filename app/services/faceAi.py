@@ -9,6 +9,7 @@ from kivy.clock import Clock
 ## -- local imports -- ##
 from services.faceDetect import FaceDetect, crop_with_buffer, draw_corners
 from services.faceRecognition import FaceRecog
+from services.dbServices import FaceDbSvc
 
 ## -- global vars -- ##
 detect_path = "/home/somnath/.insightface/models/buffalo_l/det_10g.onnx"
@@ -79,6 +80,7 @@ class FaceAiSvc:
         self.out_path = out_pth
         self.face_detect = None
         self.face_recog = None
+        self.db_sess = None
         self._threshold_cosine = 0.65
         self._threshold_norml2 = 1.13
 
@@ -89,6 +91,10 @@ class FaceAiSvc:
     def start_recognition_session(self):
         self.face_recog = FaceRecog(self.recog_onnx)
         self.face_recog.start_session()
+
+    def start_db_session(self, db_path:str):
+        self.db_sess = FaceDbSvc(db_path)
+        self.db_sess.init_db()
 
     def match_two_images_single_face(self, img1_path:str, img2_path:str, callback=None):
         """
@@ -195,3 +201,47 @@ class FaceAiSvc:
         else:
             return obj_return
 
+    def check_if_data_exist(self, callback=None):
+        stat = False
+        if self.db_sess:
+            if self.db_sess.names and self.db_sess.matrix_embeddings:
+                stat = True
+        # return via callback or normal return
+        if callback:
+            Clock.schedule_once(lambda dt: callback(stat))
+        else:
+            return stat
+
+    def save_faces_masterdb(self, name:str, image, callback=None):
+        stat = False
+        if None in (self.db_sess, self.face_recog, self.face_detect):
+            print("Please start the db & face sessions first")
+            if callback:
+                Clock.schedule_once(lambda dt: callback(stat))
+            else:
+                return stat
+
+        cropped = self.face_detect.get_single_face_cropped(image)
+        embed = self.face_recog.get_face_embedding(cropped)
+        stat = self.db_sess.save_embedding(name, embed)
+        if callback:
+            Clock.schedule_once(lambda dt: callback(stat))
+        else:
+            return stat
+
+    def face_verify(self, image, callback=None):
+        stat = None
+        if None in (self.db_sess, self.face_recog, self.face_detect):
+            print("Please start the db & face sessions first")
+            if callback:
+                Clock.schedule_once(lambda dt: callback(stat))
+            else:
+                return stat
+
+        cropped = self.face_detect.get_single_face_cropped(image)
+        embed = self.face_recog.get_face_embedding(cropped)
+        matched_name = self.db_sess.check_face_exists(embed, self._threshold_cosine)
+        if callback:
+            Clock.schedule_once(lambda dt: callback(matched_name))
+        else:
+            return matched_name
