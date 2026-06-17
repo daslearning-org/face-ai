@@ -91,6 +91,9 @@ class FaceAiApp(MDApp):
         self.wake_lock = None
         self.cam_uix = None
         self.camera = None
+        self.db_conn_ok = False
+        self.data_in_db = False
+        self.tmp_spinner = None
         self.user_preferences = {
             "fm_dont_again": False
         }
@@ -137,6 +140,7 @@ class FaceAiApp(MDApp):
         self.model_dir = os.path.join(self.internal_storage, 'model_files')
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
         self.config_dir = os.path.join(self.internal_storage, 'config')
+        db_dir = os.path.join(self.internal_storage, 'databases')
         self.last_upload_path = None
         self.last_downlaod_path = None
         self.src_image_path = None
@@ -146,12 +150,14 @@ class FaceAiApp(MDApp):
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         os.makedirs(self.config_dir, exist_ok=True)
+        os.makedirs(db_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
         self.config_path = os.path.join(self.config_dir, 'config.json')
         self.resp_path = os.path.join(self.config_dir, 'resp.json')
         self.usr_pref_path = os.path.join(self.config_dir, 'preferences.json')
         self.detect_model_path = os.path.join(self.model_dir, "faceai", "det_10g.onnx")
         self.recog_model_path = os.path.join(self.model_dir, "faceai","arc.onnx")
+        self.db_path = os.path.join(db_dir, "master_face.db")
         self.is_inp_file_mgr_open = False
         self.is_op_file_mgr_open = False
         # folder manager for downloading
@@ -719,8 +725,24 @@ class FaceAiApp(MDApp):
         permissions_ok = self.check_request_total_permission()
         if not permissions_ok:
             return
-        self.cam_uix = self.root.ids.security_box.ids.camera_box
-        self.cam_uix.clear_widgets()
+        if not self.face_ai:
+            self.show_toast_msg("Please start the services first.", is_error=True, duration=2)
+            self.root.ids.screen_manager.current = "initScreen"
+            return
+        self.db_conn_ok = self.face_ai.start_db_session(self.db_path)
+        if self.db_conn_ok:
+            #security_box = self.root.ids.security_box.ids.security_box
+            self.cam_uix = self.root.ids.security_box.ids.camera_box
+            self.tmp_spinner = TempSpinWait()
+            self.tmp_spinner.text = "Checking database, please wait..."
+            self.cam_uix.add_widget(self.tmp_spinner)
+            Clock.schedule_once(lambda dt: self.face_ai.check_if_data_exist(self.init_security_callback))
+
+    def add_camera(self, parent_element):
+        #self.cam_uix = self.root.ids.security_box.ids.camera_box
+        if self.cam_uix:
+            self.cam_uix.clear_widgets()
+        self.cam_uix = parent_element
         if platform == "android":
             cam_indx = 0
             resolution = (960, 720) # will fallback to 480 if fails again
@@ -750,6 +772,42 @@ class FaceAiApp(MDApp):
         except Exception as e:
             print(f"Error setting up the camera: {e}")
             self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
+
+    def init_security_callback(self, resp):
+        if self.cam_uix:
+            self.cam_uix.clear_widgets()
+        if not resp: # no data found 
+            self.add_camera(self.root.ids.security_box.ids.camera_box)
+        else: # data found, need login
+            self.data_in_db = True
+            self.add_camera(self.root.ids.security_box.ids.camera_box)
+            camera_btn = self.root.ids.security_box.ids.sec_cam_btn
+            camera_btn.text = "Login"
+
+    def sec_face_login_save(self, name:str, img):
+        if not self.data_in_db:
+            stat = self.face_ai.save_faces_masterdb(name, img)
+
+    def sec_capture_fram(self, instance=None):
+        if not self.camera or not self.camera.texture:
+            self.show_toast_msg("Camera is Not OK", True, 2)
+            return
+        name_txt = self.root.ids.security_box.ids.sec_name_inp_txt.text
+        try:
+            import cv2
+            import numpy as np
+            texture = self.camera.texture
+            pixels = texture.pixels
+            width, height = texture.size
+            arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
+            if platform == 'android':
+                arr = np.flipud(arr)  # Flip up down in android
+            img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+            # Process the frame (e.g., save or analyze)
+            self.sec_face_login_save(name_txt, img)
+            #print(f"Frame captured") # debug
+        except Exception as e:
+            print(f"Error processing frame: {e}")
 
     def on_security_leave(self):
         if self.camera:

@@ -17,7 +17,7 @@ Builder.load_string('''
     padding: dp(8)
 
     MDLabel:
-        text: "Please wait..."
+        text: root.text
         font_style: "Subtitle1"
         adaptive_width: True
 
@@ -150,7 +150,7 @@ Builder.load_string('''
 ''')
 
 class TempSpinWait(MDBoxLayout):
-    pass
+    text = StringProperty("Please wait...")
 
 class FaceMatchBox(MDBoxLayout):
     top_pad = NumericProperty(0)

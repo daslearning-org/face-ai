@@ -37,6 +37,7 @@ Builder.load_string('''
     spacing: dp(4)
 
     MDBoxLayout:
+        id: security_box
         orientation: 'vertical'
         spacing: dp(4)
         size_hint_y: 0.8
@@ -67,14 +68,14 @@ Builder.load_string('''
                 multiline: False
 
         MDFillRoundFlatIconButton:
-            id: save_face_btn
+            id: sec_cam_btn
             text: "Save Face"
             icon: "camera"
             font_size: sp(18)
             md_bg_color: "#333036"
             pos_hint: {"center_x": .5, "center_y": 1}
             size_hint_x: 0.5
-            #on_release: app.open_img_file_manager("btn_fm_tgt_upload")
+            on_release: app.sec_capture_fram()
         # add camera feed here
 
     BoxLayout:

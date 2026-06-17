@@ -29,6 +29,7 @@ class FaceDbSvc:
                 )
             ''')
             self.conn.commit()
+        print(f"DB connection to {self.db_path} is OK")
 
     def db_close(self):
         self.conn.close()
