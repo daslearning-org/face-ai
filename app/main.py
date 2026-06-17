@@ -112,12 +112,14 @@ class FaceAiApp(MDApp):
             except Exception as e:
                 print(f"Could not check the android SDK version: {e}")
                 #self.show_toast_msg(f"Error checking SDK: {e}", is_error=True)
-            self.android_permissions = [] #Permission.CAMERA
+            self.android_permissions = [Permission.WAKE_LOCK]
+            self.total_permissions = [Permission.CAMERA]
             if sdk_version >= 33:  # Android 13+
                 self.android_permissions.append(Permission.READ_MEDIA_IMAGES)
             else:  # Android 9–12
                 self.android_permissions.extend([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
-            request_permissions(self.android_permissions)
+            self.total_permissions.extend(self.android_permissions)
+            request_permissions(self.total_permissions)
             self.internal_storage = app_storage_path()
             try:
                 Environment = autoclass("android.os.Environment")
@@ -216,6 +218,20 @@ class FaceAiApp(MDApp):
                     break
             if not permission_flag:
                 request_permissions(self.android_permissions, self.permission_callback)
+            return permission_flag
+        else:
+            return True
+
+    def check_request_total_permission(self):
+        if platform == "android":
+            permission_flag = True
+            for permission in self.total_permissions:
+                tmp_flag = check_permission(permission)
+                if not tmp_flag:
+                    permission_flag = False
+                    break
+            if not permission_flag:
+                request_permissions(self.total_permissions, self.permission_callback)
             return permission_flag
         else:
             return True

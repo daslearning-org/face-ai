@@ -7,6 +7,7 @@ from kivy.lang import Builder
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp, sp
 from kivy.utils import platform
+#from kivy.utils import get_color_from_hex
 
 # local imports
 
@@ -22,12 +23,6 @@ Builder.load_string('''
         AccordionItem:
             title: "Settings"
             spacing: dp(8)
-            canvas.before:
-                Color:
-                    rgba: (168, 183, 191, 1)
-                RoundedRectangle:
-                    size: self.width, self.height
-                    pos: self.pos
 
             MDScrollView:
                 MDList:
@@ -40,12 +35,6 @@ Builder.load_string('''
         AccordionItem:
             title: "Help & Support"
             spacing: dp(8)
-            canvas.before:
-                Color:
-                    rgba: (170, 191, 184, 1)
-                RoundedRectangle:
-                    size: self.width, self.height
-                    pos: self.pos
 
             MDScrollView:
                 MDList:
