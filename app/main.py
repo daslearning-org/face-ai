@@ -14,6 +14,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDFloatingActionButton
 
+from kivy.uix.camera import Camera
 from kivy.clock import Clock
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -88,6 +89,8 @@ class FaceAiApp(MDApp):
         self.models_ok = False
         self.last_instance = None
         self.wake_lock = None
+        self.cam_uix = None
+        self.camera = None
         self.user_preferences = {
             "fm_dont_again": False
         }
@@ -711,6 +714,51 @@ class FaceAiApp(MDApp):
         upload_src_box.clear_widgets()
         upload_trgt_box.clear_widgets()
 
+    # Security section starts here
+    def on_security_enter(self):
+        permissions_ok = self.check_request_total_permission()
+        if not permissions_ok:
+            return
+        self.cam_uix = self.root.ids.security_box.ids.camera_box
+        self.cam_uix.clear_widgets()
+        if platform == "android":
+            cam_indx = 0
+            resolution = (960, 720) # will fallback to 480 if fails again
+        else:
+            resolution = (640, 480)
+            import cv2
+            available_cameras = []
+            for i in range(2):
+                cap = cv2.VideoCapture(i)
+                if cap.isOpened():
+                    print(f"Camera found at index: {i}")
+                    available_cameras.append(i)
+                    cap.release()
+            if len(available_cameras) >= 1:
+                cam_indx = available_cameras[0]
+            else:
+                self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
+                return
+        try:
+            self.camera = Camera(
+                index = cam_indx,
+                resolution = resolution,
+                fit_mode = "contain",
+                play = True
+            )
+            self.cam_uix.add_widget(self.camera)
+            self.cam_found = True
+        except Exception as e:
+            print(f"Error setting up the camera: {e}")
+            self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
+
+    def on_security_leave(self):
+        if self.camera:
+            self.camera.play = False
+            self.cam_uix.clear_widgets()
+            self.camera = None
+
+    # Settings section start here
     def show_all_delete_alert(self):
         op_img_count = 0
         for filename in os.listdir(self.op_dir):
@@ -778,6 +826,7 @@ class FaceAiApp(MDApp):
             buttons
         )
 
+    # Handling the device events (mostly on Android)
     def on_pause(self):
         return True
 
