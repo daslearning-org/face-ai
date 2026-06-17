@@ -747,7 +747,6 @@ class FaceAiApp(MDApp):
                 play = True
             )
             self.cam_uix.add_widget(self.camera)
-            self.cam_found = True
         except Exception as e:
             print(f"Error setting up the camera: {e}")
             self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
