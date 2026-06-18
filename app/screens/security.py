@@ -34,8 +34,7 @@ Builder.load_string('''
     MDGridLayout:
         cols: 2
         spacing: dp(4)
-        size_hint_y: 0.2
-        size_hint_max_y: self.parent.height * 0.2
+        adaptive_height: True
         MDFillRoundFlatIconButton:
             id: vault_up_btn
             text: "Upload File"
