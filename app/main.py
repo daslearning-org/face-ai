@@ -30,6 +30,7 @@ from plyer import filechooser
 from services.faceAi import FaceAiSvc
 from screens.init_screen import ModelDownloder
 from screens.face_match import TempSpinWait, FaceMatchBox
+from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox
 from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
@@ -89,7 +90,7 @@ class FaceAiApp(MDApp):
         self.models_ok = False
         self.last_instance = None
         self.wake_lock = None
-        self.cam_uix = None
+        self.sec_uix = None
         self.camera = None
         self.db_conn_ok = False
         self.data_in_db = False
@@ -731,18 +732,17 @@ class FaceAiApp(MDApp):
             return
         self.db_conn_ok = self.face_ai.start_db_session(self.db_path)
         if self.db_conn_ok:
-            #security_box = self.root.ids.security_box.ids.security_box
-            self.cam_uix = self.root.ids.security_box.ids.camera_box
+            self.sec_uix = self.root.ids.security_box.ids.sec_elements_box
             self.tmp_spinner = TempSpinWait()
             self.tmp_spinner.text = "Checking database, please wait..."
-            self.cam_uix.add_widget(self.tmp_spinner)
+            self.sec_uix.add_widget(self.tmp_spinner)
             Clock.schedule_once(lambda dt: self.face_ai.check_if_data_exist(self.init_security_callback))
 
     def add_camera(self, parent_element):
-        #self.cam_uix = self.root.ids.security_box.ids.camera_box
-        if self.cam_uix:
-            self.cam_uix.clear_widgets()
-        self.cam_uix = parent_element
+        #self.sec_uix = self.root.ids.security_box.ids.camera_box
+        if self.sec_uix:
+            self.sec_uix.clear_widgets()
+        self.sec_uix = parent_element
         if platform == "android":
             cam_indx = 0
             resolution = (960, 720) # will fallback to 480 if fails again
@@ -768,23 +768,30 @@ class FaceAiApp(MDApp):
                 fit_mode = "contain",
                 play = True
             )
-            self.cam_uix.add_widget(self.camera)
+            self.sec_uix.add_widget(self.camera)
         except Exception as e:
             print(f"Error setting up the camera: {e}")
             self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
 
+    def add_name_input(self, parent_element):
+        name_inp_elem = NameInput()
+        parent_element.add_widget(name_inp_elem)
+
+    def add_login_btn(self, parent_element):
+        login_btn = SecCamBtn()
+        parent_element.add_widget(login_btn)
+
     def init_security_callback(self, resp):
-        if self.cam_uix:
-            self.cam_uix.clear_widgets()
+        if self.sec_uix:
+            self.sec_uix.clear_widgets()
+        
         if not resp: # no data found 
-            self.add_camera(self.root.ids.security_box.ids.camera_box)
+            self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
+            self.add_name_input(self.root.ids.security_box.ids.sec_elements_box)
         else: # data found, need login
             self.data_in_db = True
-            self.add_camera(self.root.ids.security_box.ids.camera_box)
-            camera_btn = self.root.ids.security_box.ids.sec_cam_btn
-            camera_btn.text = "Login"
-            name_inp = self.root.ids.security_box.ids.sec_name_inp_txt
-            name_inp.parent.remove_widget(name_inp)
+            self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
+            self.add_login_btn(self.root.ids.security_box.ids.sec_elements_box)
 
     def sec_face_login_save(self, name:str, img):
         if not self.data_in_db:
@@ -796,24 +803,23 @@ class FaceAiApp(MDApp):
             print("There is existing face(s)")
             matched_name = self.face_ai.face_verify(img)
             if matched_name is None:
-                print("Face is not matched")
+                self.show_toast_msg("Face is not matched", True)
             else:
                 self.show_toast_msg(str(matched_name))
                 if self.camera:
                     self.camera.play = False
-                    self.cam_uix.clear_widgets()
+                    self.sec_uix.clear_widgets()
                     self.camera = None
 
     def sec_capture_frame(self, instance=None):
         if not self.camera or not self.camera.texture:
             self.show_toast_msg("Camera is Not OK", True, 2)
             return
-        if self.data_in_db:
-            name_txt = ""
+        if instance:
+            name_txt = instance.text
         else:
-            name_txt = self.root.ids.security_box.ids.sec_name_inp_txt.text
-        #try:
-        if True:
+            name_txt = ""
+        try:
             import cv2
             import numpy as np
             texture = self.camera.texture
@@ -824,16 +830,14 @@ class FaceAiApp(MDApp):
                 arr = np.flipud(arr)  # Flip up down in android
             img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
             #print(img)
-            # Process the frame (e.g., save or analyze)
             self.sec_face_login_save(name_txt, img)
-            #print(f"Frame captured") # debug
-        #except Exception as e:
-        #    print(f"Error processing frame: {e}")
+        except Exception as e:
+            print(f"Error processing frame: {e}")
 
     def on_security_leave(self):
         if self.camera:
             self.camera.play = False
-            self.cam_uix.clear_widgets()
+            self.sec_uix.clear_widgets()
             self.camera = None
 
     # Settings section start here

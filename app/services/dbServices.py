@@ -69,12 +69,12 @@ class FaceDbSvc:
             return None, None
 
     def check_face_exists(self, query_embedding, threashold:float=0.65):
-        #if (len(self.names) >0 and  
-        #    self.matrix_embeddings is not None
-        #    and self.matrix_embeddings.size >0
-        #):
-        #    print("There is no face yet")
-        #    return
+        if (
+            len(self.names) <= 0 and
+            self.matrix_embeddings is None
+        ):
+            print("There is no face yet")
+            return
         print("matrix shape:", self.matrix_embeddings.shape)
         print("matrix dtype:", self.matrix_embeddings.dtype)
         print("query shape:", query_embedding.shape)
