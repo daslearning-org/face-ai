@@ -3,6 +3,7 @@ from kivy.metrics import dp, sp
 
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.button import MDFillRoundFlatIconButton
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp, sp
@@ -12,6 +13,39 @@ from kivy.uix.widget import Widget
 
 ## The .kv strings
 Builder.load_string('''
+
+<SecAfterLogin>:
+    orientation: 'vertical'
+    spacing: dp(4)
+
+    MDGridLayout:
+        cols: 2
+        spacing: dp(4)
+        size_hint_y: 0.2
+        size_hint_max_y: self.parent.height * 0.2
+        MDFillRoundFlatIconButton:
+            id: vault_up_btn
+            text: "Upload File"
+            icon: "folder-key"
+            font_size: sp(18)
+            #md_bg_color: "#333036"
+            pos_hint: {"center_x": .5, "center_y": 1}
+            size_hint_x: 0.5
+            on_release: app.upload_to_vault()
+        MDFillRoundFlatIconButton:
+            id: add_new_face_btn
+            text: "Add Another Face"
+            icon: "face-recognition"
+            font_size: sp(18)
+            md_bg_color: "#333036"
+            pos_hint: {"center_x": .5, "center_y": 1}
+            size_hint_x: 0.5
+            on_release: app.add_new_face()
+
+    MDScrollView:
+        size_hint_y: 0.8
+        MDList:
+            # add all files here
 
 <NameInput>:
     orientation: 'vertical'
@@ -94,7 +128,7 @@ class SecurityBox(MDBoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = "settings_main_bx"
+        self.name = "security_main_bx"
         if platform == "android":
             try:
                 from android.display_cutout import get_height_of_bar

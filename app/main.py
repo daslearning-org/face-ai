@@ -95,6 +95,8 @@ class FaceAiApp(MDApp):
         self.db_conn_ok = False
         self.data_in_db = False
         self.tmp_spinner = None
+        self.login_success = False
+        self.face_reg_error = False
         self.user_preferences = {
             "fm_dont_again": False
         }
@@ -730,13 +732,14 @@ class FaceAiApp(MDApp):
             self.show_toast_msg("Please start the services first.", is_error=True, duration=2)
             self.root.ids.screen_manager.current = "initScreen"
             return
+        self.on_security_leave() # clear existing things
         self.sec_uix = self.root.ids.security_box.ids.sec_elements_box
         self.db_conn_ok = self.face_ai.start_db_session(self.db_path)
         if self.db_conn_ok:
             self.tmp_spinner = TempSpinWait()
             self.tmp_spinner.text = "Checking database, please wait..."
             self.sec_uix.add_widget(self.tmp_spinner)
-            Clock.schedule_once(lambda dt: self.face_ai.check_if_data_exist(self.init_security_callback))
+            Clock.schedule_once(lambda dt: self.face_ai.check_if_data_exist(self._init_security_callback))
 
     def add_camera(self, parent_element):
         #self.sec_uix = self.root.ids.security_box.ids.camera_box
@@ -781,10 +784,12 @@ class FaceAiApp(MDApp):
         login_btn = SecCamBtn()
         parent_element.add_widget(login_btn)
 
-    def init_security_callback(self, resp):
+    def _init_security_callback(self, resp): # should not be called directly
+        if self.login_success:
+            self.sec_login_ok()
+            return
         if self.sec_uix:
             self.sec_uix.clear_widgets()
-        
         if not resp: # no data found 
             self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
             self.add_name_input(self.root.ids.security_box.ids.sec_elements_box)
@@ -793,12 +798,19 @@ class FaceAiApp(MDApp):
             self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
             self.add_login_btn(self.root.ids.security_box.ids.sec_elements_box)
 
+    def add_new_face(self, instance=None):
+        self.on_security_leave()
+        self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
+        self.add_name_input(self.root.ids.security_box.ids.sec_elements_box)
+
     def sec_login_ok(self, msg:str="Login"):
         if self.camera:
             self.camera.play = False
+            self.camera._camera.stop()
             self.camera = None
         if self.sec_uix:
             self.sec_uix.clear_widgets()
+        self.login_success = True
         print(f"{msg} is successful!")
 
     def sec_face_login_save(self, name:str, img, newFace=False):
@@ -814,9 +826,10 @@ class FaceAiApp(MDApp):
                 if stat:
                     self.data_in_db = True
                     self.sec_login_ok("SignUp")
-                    Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added as a first face."))
+                    Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added in database."))
                 else:
                     self.show_toast_msg("Face is not saved, please try again", True)
+                    self.face_reg_error = True
             else:
                 msg = f"This face is already saved for: {str(matched_name[0])}"
                 self.sec_login_ok()
@@ -858,7 +871,9 @@ class FaceAiApp(MDApp):
     def on_security_leave(self):
         if self.camera:
             self.camera.play = False
+            self.camera._camera.stop()
             self.camera = None
+            print("Camera has been stopped")
         if self.sec_uix:
             self.sec_uix.clear_widgets()
 
@@ -932,6 +947,7 @@ class FaceAiApp(MDApp):
 
     # Handling the device events (mostly on Android)
     def on_pause(self):
+        self.login_success = False
         return True
 
     def events(self, instance, keyboard, keycode, text, modifiers):
@@ -946,6 +962,8 @@ class FaceAiApp(MDApp):
                     self.op_file_manager.back() # go one dir back
                 # stop app from exiting
                 return True
+            if self.face_reg_error:
+                self.on_security_enter()
         # exits from app
         return False
 

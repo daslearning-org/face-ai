@@ -158,7 +158,7 @@ class FaceMatchBox(MDBoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = "settings_main_bx"
+        self.name = "face_matcher_box"
         if platform == "android":
             try:
                 from android.display_cutout import get_height_of_bar
