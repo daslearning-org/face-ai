@@ -18,6 +18,7 @@ Builder.load_string('''
     spacing: dp(4)
     MDGridLayout:
         cols: 2
+        padding: 4, 4, 4, 24
         adaptive_height: True
         MDLabel:
             text: "Enter your name"
@@ -42,7 +43,7 @@ Builder.load_string('''
         md_bg_color: "#333036"
         pos_hint: {"center_x": .5, "center_y": 1}
         size_hint_x: 0.5
-        on_release: app.sec_capture_frame(sec_name_inp_txt)
+        on_release: app.sec_capture_frame(sec_name_inp_txt, False)
 
 <SecCamBtn>:
     id: sec_cam_btn
@@ -52,7 +53,7 @@ Builder.load_string('''
     md_bg_color: "#333036"
     pos_hint: {"center_x": .5, "center_y": 1}
     size_hint_x: 0.5
-    on_release: app.sec_capture_frame()
+    on_release: app.sec_capture_frame(None, False)
 
 <SecCamBox>:
     id: camera_box

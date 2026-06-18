@@ -801,8 +801,8 @@ class FaceAiApp(MDApp):
             self.sec_uix.clear_widgets()
         print(f"{msg} is successful!")
 
-    def sec_face_login_save(self, name:str, img):
-        if not self.data_in_db:
+    def sec_face_login_save(self, name:str, img, newFace=False):
+        if not self.data_in_db or newFace:
             stat = self.face_ai.save_faces_masterdb(name, img)
             if stat:
                 self.data_in_db = True
@@ -820,7 +820,7 @@ class FaceAiApp(MDApp):
                 self.sec_login_ok()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
 
-    def sec_capture_frame(self, instance=None):
+    def sec_capture_frame(self, instance=None, newFace=False):
         if not self.camera or not self.camera.texture:
             self.show_toast_msg("Camera is Not OK", True, 2)
             return
@@ -839,7 +839,7 @@ class FaceAiApp(MDApp):
                 arr = np.flipud(arr)  # Flip up down in android
             img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
             #print(img)
-            self.sec_face_login_save(name_txt, img)
+            self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
             print(f"Error processing frame: {e}")
 
