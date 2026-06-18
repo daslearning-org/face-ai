@@ -5,6 +5,8 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.button import MDFillRoundFlatIconButton
+from kivymd.uix.list import MDList, OneLineIconListItem, IconLeftWidget, IconRightWidget, OneLineAvatarIconListItem
+
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp, sp
 from kivy.utils import platform
@@ -13,6 +15,17 @@ from kivy.uix.widget import Widget
 
 ## The .kv strings
 Builder.load_string('''
+
+<SecSingleFile>:
+    id: root.filename
+    text: root.filename
+    on_release: app.download_sec_file(self)
+    IconLeftWidget:
+        icon: "delete"
+        on_release: app.popup_sec_file_delete(root)
+    IconRightWidget:
+        icon: "download"
+        on_release: app.download_sec_file(root)
 
 <SecAfterLogin>:
     orientation: 'vertical'
@@ -114,6 +127,9 @@ Builder.load_string('''
 ''')
 
 # the classes
+class SecSingleFile(OneLineAvatarIconListItem):
+    filename = StringProperty("")
+
 class SecAfterLogin(MDBoxLayout):
     pass
 

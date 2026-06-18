@@ -30,7 +30,7 @@ from plyer import filechooser
 from services.faceAi import FaceAiSvc
 from screens.init_screen import ModelDownloder
 from screens.face_match import TempSpinWait, FaceMatchBox
-from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox, SecAfterLogin
+from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox, SecAfterLogin, SecSingleFile
 from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
@@ -97,6 +97,8 @@ class FaceAiApp(MDApp):
         self.tmp_spinner = None
         self.login_success = False
         self.face_reg_error = False
+        self.sec_file_box = None
+        self.sec_file_current_path = None
         self.user_preferences = {
             "fm_dont_again": False
         }
@@ -143,6 +145,7 @@ class FaceAiApp(MDApp):
         self.model_dir = os.path.join(self.internal_storage, 'model_files')
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
         self.config_dir = os.path.join(self.internal_storage, 'config')
+        self.sec_file_dir = os.path.join(self.internal_storage, 'secure_files')
         db_dir = os.path.join(self.internal_storage, 'databases')
         self.last_upload_path = None
         self.last_downlaod_path = None
@@ -153,6 +156,7 @@ class FaceAiApp(MDApp):
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         os.makedirs(self.config_dir, exist_ok=True)
+        os.makedirs(self.sec_file_dir, exist_ok=True)
         os.makedirs(db_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
         self.config_path = os.path.join(self.config_dir, 'config.json')
@@ -702,9 +706,8 @@ class FaceAiApp(MDApp):
                 self.show_toast_msg(f"Deleted: {self.delete_file_path}")
                 print(f"Deleted: {self.delete_file_path}")
                 self.delete_file_path = None
-                self.download_file_path = None
                 if self.last_instance and self.last_instance.parent:
-                    self.last_instance.parent.remove_widget(self.last_instance)
+                    Clock.schedule_once(lambda dt: self.last_instance.parent.remove_widget(self.last_instance))
                     self.last_instance = None
             except Exception as e:
                 print(f"Error while deleting {self.delete_file_path} because: {e}")
@@ -803,6 +806,22 @@ class FaceAiApp(MDApp):
         self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
         self.add_name_input(self.root.ids.security_box.ids.sec_elements_box)
 
+    def get_sec_file_list(self, path:str):
+        files = []
+        for filename in os.listdir(path):
+            files.append(filename)
+        return files
+
+    def refresh_sec_file_list(self):
+        if self.sec_file_box:
+            secMdList = self.sec_file_box.ids.sec_file_list
+            secMdList.clear_widgets()
+            sec_files = self.get_sec_file_list(self.sec_file_dir)
+            for file in sec_files:
+                fileElem = SecSingleFile()
+                fileElem.filename = str(file)
+                secMdList.add_widget(fileElem)
+
     def sec_login_ok(self, msg:str="Login"):
         if self.camera:
             self.camera.play = False
@@ -811,6 +830,12 @@ class FaceAiApp(MDApp):
         if self.sec_uix:
             self.sec_uix.clear_widgets()
         self.sec_file_box = SecAfterLogin()
+        secMdList = self.sec_file_box.ids.sec_file_list
+        sec_files = self.get_sec_file_list(self.sec_file_dir)
+        for file in sec_files:
+            fileElem = SecSingleFile()
+            fileElem.filename = str(file)
+            secMdList.add_widget(fileElem)
         self.sec_uix.add_widget(self.sec_file_box)
         self.login_success = True
         print(f"{msg} is successful!")
@@ -869,6 +894,72 @@ class FaceAiApp(MDApp):
             self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
             print(f"Error processing frame: {e}")
+
+    def save_in_vault(self, selection):
+        self.is_inp_file_mgr_open = False
+        if selection:
+            file_path = str(selection[0])
+            self.last_upload_path = os.path.dirname(file_path)
+            filename = os.path.basename(file_path)
+            target_file = os.path.join(self.sec_file_dir, filename)
+            import shutil
+            try:
+                shutil.copyfile(file_path, target_file)
+                print(f"File successfully uploaded to: {target_file}")
+                self.show_toast_msg(f"File uploaded to: {target_file}")
+                Clock.schedule_once(lambda dt: self.refresh_sec_file_list())
+                #self.delete_file_path = str(file_path)
+                #self.delete_file_popup()
+            except Exception as e:
+                print(f"Error saving file: {e}")
+                self.show_toast_msg(f"Error saving file: {e}", is_error=True)
+
+    def upload_to_vault(self, instance=None):
+        permissions_ok = self.check_request_android_permission()
+        if not permissions_ok:
+            return
+        try:
+            if not self.last_upload_path:
+                self.last_upload_path = self.external_storage
+            filechooser.open_file(
+                on_selection = self.save_in_vault,
+                path = self.last_upload_path,
+                multiple = False,
+                filters = [["*.JPG", "*.jpg", "*.png", "*.jpeg", "*.webp"], "*"],
+                preview = True,
+            )
+            self.is_inp_file_mgr_open = True
+        except Exception as e:
+            self.show_toast_msg(f"Error: {e}", is_error=True)
+
+    def download_sec_file(self, instance):
+        filename = str(instance.filename)
+        full_path = os.path.join(self.sec_file_dir, filename)
+        self.download_file_path = str(full_path)
+        self.download_from_app_local()
+
+    def popup_sec_file_delete(self, instance):
+        filename = str(instance.filename)
+        self.last_instance = instance
+        self.delete_file_path = os.path.join(self.sec_file_dir, filename)
+        self.show_text_dialog(
+            title="Delete the file?",
+            text=f"Do you want to delete: {filename} ?",
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    theme_text_color="Custom",
+                    text_color="blue",
+                    on_release=self.txt_dialog_closer
+                ),
+                MDFlatButton(
+                    text="DELETE",
+                    theme_text_color="Custom",
+                    text_color="red",
+                    on_release=self.delete_selected_file
+                ),
+            ],
+        )
 
     def on_security_leave(self):
         if self.camera:
