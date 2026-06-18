@@ -30,7 +30,7 @@ from plyer import filechooser
 from services.faceAi import FaceAiSvc
 from screens.init_screen import ModelDownloder
 from screens.face_match import TempSpinWait, FaceMatchBox
-from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox
+from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox, SecAfterLogin
 from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
@@ -810,6 +810,8 @@ class FaceAiApp(MDApp):
             self.camera = None
         if self.sec_uix:
             self.sec_uix.clear_widgets()
+        self.sec_file_box = SecAfterLogin()
+        self.sec_uix.add_widget(self.sec_file_box)
         self.login_success = True
         print(f"{msg} is successful!")
 

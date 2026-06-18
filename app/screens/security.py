@@ -45,6 +45,7 @@ Builder.load_string('''
     MDScrollView:
         size_hint_y: 0.8
         MDList:
+            id: sec_file_list
             # add all files here
 
 <NameInput>:
@@ -113,6 +114,9 @@ Builder.load_string('''
 ''')
 
 # the classes
+class SecAfterLogin(MDBoxLayout):
+    pass
+
 class SecCamBox(MDBoxLayout):
     pass
 
