@@ -783,17 +783,37 @@ class FaceAiApp(MDApp):
             self.add_camera(self.root.ids.security_box.ids.camera_box)
             camera_btn = self.root.ids.security_box.ids.sec_cam_btn
             camera_btn.text = "Login"
+            name_inp = self.root.ids.security_box.ids.sec_name_inp_txt
+            name_inp.parent.remove_widget(name_inp)
 
     def sec_face_login_save(self, name:str, img):
         if not self.data_in_db:
             stat = self.face_ai.save_faces_masterdb(name, img)
+            if stat:
+                self.data_in_db = True
+            print("First master face is added successfully!")
+        else:
+            print("There is existing face(s)")
+            matched_name = self.face_ai.face_verify(img)
+            if matched_name is None:
+                print("Face is not matched")
+            else:
+                self.show_toast_msg(str(matched_name))
+                if self.camera:
+                    self.camera.play = False
+                    self.cam_uix.clear_widgets()
+                    self.camera = None
 
-    def sec_capture_fram(self, instance=None):
+    def sec_capture_frame(self, instance=None):
         if not self.camera or not self.camera.texture:
             self.show_toast_msg("Camera is Not OK", True, 2)
             return
-        name_txt = self.root.ids.security_box.ids.sec_name_inp_txt.text
-        try:
+        if self.data_in_db:
+            name_txt = ""
+        else:
+            name_txt = self.root.ids.security_box.ids.sec_name_inp_txt.text
+        #try:
+        if True:
             import cv2
             import numpy as np
             texture = self.camera.texture
@@ -803,11 +823,12 @@ class FaceAiApp(MDApp):
             if platform == 'android':
                 arr = np.flipud(arr)  # Flip up down in android
             img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+            #print(img)
             # Process the frame (e.g., save or analyze)
             self.sec_face_login_save(name_txt, img)
             #print(f"Frame captured") # debug
-        except Exception as e:
-            print(f"Error processing frame: {e}")
+        #except Exception as e:
+        #    print(f"Error processing frame: {e}")
 
     def on_security_leave(self):
         if self.camera:

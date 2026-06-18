@@ -75,7 +75,7 @@ Builder.load_string('''
             md_bg_color: "#333036"
             pos_hint: {"center_x": .5, "center_y": 1}
             size_hint_x: 0.5
-            on_release: app.sec_capture_fram()
+            on_release: app.sec_capture_frame()
         # add camera feed here
 
     BoxLayout:

@@ -213,7 +213,11 @@ class FaceAiSvc:
     def check_if_data_exist(self, callback=None):
         stat = False
         if self.db_sess:
-            if self.db_sess.names and self.db_sess.matrix_embeddings:
+            if (
+                len(self.db_sess.names) > 0 and
+                self.db_sess.matrix_embeddings is not None and
+                self.db_sess.matrix_embeddings.size > 0
+            ):
                 stat = True
         # return via callback or normal return
         if callback:

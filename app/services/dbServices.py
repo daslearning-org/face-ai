@@ -43,9 +43,9 @@ class FaceDbSvc:
             print("DB is not initialized, please initialize it first")
             return False
         #emb_string = json.dumps(embedding_array) # fallback: embedding_array.tolist()
-        print(f"embed array shape: {embedding_array.shape}")
-        print(f"embed array dtype: {embedding_array.dtype}")
-        self.cursor.execute('INSERT INTO references (name, embedding) VALUES (?, ?)', (name, embedding_array.astype(np.float32).tobytes()))
+        #print(f"embed array shape: {embedding_array.shape}")
+        #print(f"embed array dtype: {embedding_array.dtype}")
+        self.cursor.execute('INSERT INTO master_embeddings (name, embedding) VALUES (?, ?)', (name, embedding_array.astype(np.float32).tobytes()))
         self.conn.commit()
         self.names, self.matrix_embeddings = self.get_embeddings()
         return True
@@ -63,15 +63,22 @@ class FaceDbSvc:
                 np.frombuffer(row[1], dtype=np.float32)
                 for row in rows
             ]).astype(np.float32, copy=False)
-            matrix_norms = np.linalg.norm(matrix_embeddings, axis=1)
-            return names, matrix_norms
+            #matrix_norms = np.linalg.norm(matrix_embeddings, axis=1)
+            return names, matrix_embeddings
         else:
             return None, None
 
     def check_face_exists(self, query_embedding, threashold:float=0.65):
-        if None in (self.names, self.matrix_embeddings):
-            print("There are no faces yet")
-            return
+        #if (len(self.names) >0 and  
+        #    self.matrix_embeddings is not None
+        #    and self.matrix_embeddings.size >0
+        #):
+        #    print("There is no face yet")
+        #    return
+        print("matrix shape:", self.matrix_embeddings.shape)
+        print("matrix dtype:", self.matrix_embeddings.dtype)
+        print("query shape:", query_embedding.shape)
+        print("query dtype:", query_embedding.dtype)
         similarities = self.matrix_embeddings @ query_embedding
         best_idx = np.argmax(similarities)
         best_score = similarities[best_idx]
