@@ -214,9 +214,8 @@ class FaceAiSvc:
         stat = False
         if self.db_sess:
             if (
-                len(self.db_sess.names) > 0 and
-                self.db_sess.matrix_embeddings is not None and
-                self.db_sess.matrix_embeddings.size > 0
+                self.db_sess.names is not None and
+                self.db_sess.matrix_embeddings is not None
             ):
                 stat = True
         # return via callback or normal return

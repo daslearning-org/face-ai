@@ -730,9 +730,9 @@ class FaceAiApp(MDApp):
             self.show_toast_msg("Please start the services first.", is_error=True, duration=2)
             self.root.ids.screen_manager.current = "initScreen"
             return
+        self.sec_uix = self.root.ids.security_box.ids.sec_elements_box
         self.db_conn_ok = self.face_ai.start_db_session(self.db_path)
         if self.db_conn_ok:
-            self.sec_uix = self.root.ids.security_box.ids.sec_elements_box
             self.tmp_spinner = TempSpinWait()
             self.tmp_spinner.text = "Checking database, please wait..."
             self.sec_uix.add_widget(self.tmp_spinner)
@@ -793,23 +793,32 @@ class FaceAiApp(MDApp):
             self.add_camera(self.root.ids.security_box.ids.sec_elements_box)
             self.add_login_btn(self.root.ids.security_box.ids.sec_elements_box)
 
+    def sec_login_ok(self, msg:str="Login"):
+        if self.camera:
+            self.camera.play = False
+            self.camera = None
+        if self.sec_uix:
+            self.sec_uix.clear_widgets()
+        print(f"{msg} is successful!")
+
     def sec_face_login_save(self, name:str, img):
         if not self.data_in_db:
             stat = self.face_ai.save_faces_masterdb(name, img)
             if stat:
                 self.data_in_db = True
-            print("First master face is added successfully!")
+                self.sec_login_ok("SignUp")
+                Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added as a first face."))
+            else:
+                self.show_toast_msg("Face is not saved, please try again", True)
         else:
             print("There is existing face(s)")
             matched_name = self.face_ai.face_verify(img)
             if matched_name is None:
                 self.show_toast_msg("Face is not matched", True)
             else:
-                self.show_toast_msg(str(matched_name))
-                if self.camera:
-                    self.camera.play = False
-                    self.sec_uix.clear_widgets()
-                    self.camera = None
+                msg = f"Logged in as: {str(matched_name[0])}"
+                self.sec_login_ok()
+                Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
 
     def sec_capture_frame(self, instance=None):
         if not self.camera or not self.camera.texture:
@@ -837,8 +846,9 @@ class FaceAiApp(MDApp):
     def on_security_leave(self):
         if self.camera:
             self.camera.play = False
-            self.sec_uix.clear_widgets()
             self.camera = None
+        if self.sec_uix:
+            self.sec_uix.clear_widgets()
 
     # Settings section start here
     def show_all_delete_alert(self):
