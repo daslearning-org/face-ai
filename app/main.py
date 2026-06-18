@@ -803,13 +803,24 @@ class FaceAiApp(MDApp):
 
     def sec_face_login_save(self, name:str, img, newFace=False):
         if not self.data_in_db or newFace:
-            stat = self.face_ai.save_faces_masterdb(name, img)
-            if stat:
-                self.data_in_db = True
-                self.sec_login_ok("SignUp")
-                Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added as a first face."))
+            matched_name = None
+            if len(name) < 3:
+                self.show_toast_msg("Please enter a proper name", True)
+                return
+            if self.data_in_db:
+                matched_name = self.face_ai.face_verify(img)
+            if matched_name is None:
+                stat = self.face_ai.save_faces_masterdb(name, img)
+                if stat:
+                    self.data_in_db = True
+                    self.sec_login_ok("SignUp")
+                    Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added as a first face."))
+                else:
+                    self.show_toast_msg("Face is not saved, please try again", True)
             else:
-                self.show_toast_msg("Face is not saved, please try again", True)
+                msg = f"This face is already saved for: {str(matched_name[0])}"
+                self.sec_login_ok()
+                Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
         else:
             print("There is existing face(s)")
             matched_name = self.face_ai.face_verify(img)
@@ -825,7 +836,8 @@ class FaceAiApp(MDApp):
             self.show_toast_msg("Camera is Not OK", True, 2)
             return
         if instance:
-            name_txt = instance.text
+            name_txt = str(instance.text)
+            name_txt = name_txt.strip()
         else:
             name_txt = ""
         try:
