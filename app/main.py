@@ -666,8 +666,9 @@ class FaceAiApp(MDApp):
             print(f"File successfully download to: {chosen_path}")
             self.show_toast_msg(f"File download to: {chosen_path}")
             self.delete_file_path = str(self.download_file_path)
-            self.download_file_path = None
-            self.delete_file_popup()
+            if self.root.ids.screen_manager.current in ("faceFindScr"):
+                self.download_file_path = None
+                self.delete_file_popup()
         except Exception as e:
             print(f"Error saving file: {e}")
             self.show_toast_msg(f"Error saving file: {e}", is_error=True)
@@ -708,7 +709,7 @@ class FaceAiApp(MDApp):
                 self.delete_file_path = None
                 if self.last_instance and self.last_instance.parent:
                     Clock.schedule_once(lambda dt: self.last_instance.parent.remove_widget(self.last_instance))
-                    self.last_instance = None
+                    #self.last_instance = None
             except Exception as e:
                 print(f"Error while deleting {self.delete_file_path} because: {e}")
                 self.show_toast_msg(f"Error while deleting {self.delete_file_path} because: {e}", is_error=True)
