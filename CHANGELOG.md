@@ -1,10 +1,9 @@
 ## Changes
 
-### 0.1.0 (WIP)
-- Adding a `Secure Vault` feature to store encrypted data.
+### 0.1.0
+- Adding a `Secure Vault` feature to store secret files.
 - Pop-Up with a quick tip for the chosen feature.
 - Changed the documentation link.
-- Adding spin wheel while the backend process runs.
 - Some UI enhancements.
 
 ### 0.0.1

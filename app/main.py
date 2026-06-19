@@ -38,7 +38,7 @@ from screens.setting import SettingsBox
 Window.softinput_mode = "below_target"
 
 ## Global definitions
-__version__ = "0.0.1" # App version
+__version__ = "0.1.0" # App version
 
 # Determine the base path for your application's resources
 if getattr(sys, 'frozen', False):
@@ -101,7 +101,8 @@ class FaceAiApp(MDApp):
         self.sec_file_box = None
         self.sec_file_current_path = None
         self.user_preferences = {
-            "fm_dont_again": False
+            "fm_dont_again": False,
+            "sec_dont_again": False
         }
 
     def build(self):
@@ -180,6 +181,7 @@ class FaceAiApp(MDApp):
             with open(self.usr_pref_path, "r") as pf:
                 old_pref = json.load(pf)
             self.user_preferences["fm_dont_again"] = old_pref.get("fm_dont_again", False)
+            self.user_preferences["sec_dont_again"] = old_pref.get("sec_dont_again", False)
         else:
             with open(self.usr_pref_path, "w") as pf:
                 json.dump(self.user_preferences, pf)
@@ -220,6 +222,9 @@ class FaceAiApp(MDApp):
         saveFlag = False
         if self.root.ids.screen_manager.current == "faceFindScr":
             self.user_preferences["fm_dont_again"] = True
+            saveFlag = True
+        elif self.root.ids.screen_manager.current == "securityScr":
+            self.user_preferences["sec_dont_again"] = True
             saveFlag = True
         # save the file
         if saveFlag:
@@ -846,6 +851,30 @@ class FaceAiApp(MDApp):
                 fileElem.filename = str(file)
                 secMdList.add_widget(fileElem)
 
+    def after_login_instructions(self):
+        if self.user_preferences["sec_dont_again"]:
+            return
+        else:
+            buttons = [
+                MDFlatButton(
+                    text="Don't Show Again",
+                    theme_text_color="Custom",
+                    text_color='orange',
+                    on_release=self.set_usr_pref
+                ),
+                MDFlatButton(
+                    text="Ok",
+                    theme_text_color="Custom",
+                    text_color="green",
+                    on_release=self.txt_dialog_closer
+                ),
+            ]
+            self.show_text_dialog(
+                "Instructions",
+                "You can upload your secret files here. You can download them later. You can add a new face for login.",
+                buttons
+            )
+
     def sec_login_ok(self, msg:str="Login"):
         if self.camera:
             self.camera.play = False
@@ -862,6 +891,7 @@ class FaceAiApp(MDApp):
             secMdList.add_widget(fileElem)
         self.sec_uix.add_widget(self.sec_file_box)
         self.login_success = True
+        self.after_login_instructions()
         print(f"{msg} is successful!")
 
     def sec_face_login_save(self, name:str, img, newFace=False):
