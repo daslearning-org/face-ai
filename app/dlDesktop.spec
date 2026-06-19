@@ -14,6 +14,7 @@ a = Analysis(
     hiddenimports=[
         "kivymd.uix.gridlayout",
         "kivymd.uix.textfield",
+        "kivy.parser",
         "plyer.platforms",
         "plyer.platforms.linux",
         "plyer.platforms.win",
