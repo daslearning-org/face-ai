@@ -9,6 +9,7 @@ from kivy.clock import Clock
 ## -- local imports -- ##
 from services.faceDetect import FaceDetect, crop_with_buffer, draw_corners
 from services.faceRecognition import FaceRecog
+from services.dbServices import FaceDbSvc
 
 ## -- global vars -- ##
 detect_path = "/home/somnath/.insightface/models/buffalo_l/det_10g.onnx"
@@ -79,6 +80,7 @@ class FaceAiSvc:
         self.out_path = out_pth
         self.face_detect = None
         self.face_recog = None
+        self.db_sess = None
         self._threshold_cosine = 0.65
         self._threshold_norml2 = 1.13
 
@@ -89,6 +91,19 @@ class FaceAiSvc:
     def start_recognition_session(self):
         self.face_recog = FaceRecog(self.recog_onnx)
         self.face_recog.start_session()
+
+    def start_db_session(self, db_path:str):
+        if self.db_sess:
+            print("Datase connection is already OK")
+            return True
+        try:
+            self.db_sess = FaceDbSvc(db_path)
+            self.db_sess.init_db()
+            return True
+        except Exception as e:
+            print(f"Database init error: {e}")
+            self.db_sess = None
+            return False
 
     def match_two_images_single_face(self, img1_path:str, img2_path:str, callback=None):
         """
@@ -158,15 +173,15 @@ class FaceAiSvc:
             face1 = crop_with_buffer(image1, faces1[0])
             face1_emb = self.face_recog.get_face_embedding(face1)
         elif len(faces1) >= 2:
-            obj_return["msg"] = "More than one face found on image 1"
+            obj_return["msg"] = "[color=#f58e2f]More than one face found in [b]Source Image[/b][/color]"
         else:
-            obj_return["msg"] = "No face is found on image 1"
+            obj_return["msg"] = "[color=#f58e2f]No face is found in [b]Source Image[b][/color]"
 
         faces2, point2 = self.face_detect.detect(image2)
         if len(faces2) >= 1:
             img2_stat = True
         else:
-            obj_return["msg"] = "No face is found in image 2"
+            obj_return["msg"] = "[color=#f58e2f]No face is found in [b]Target Image[/b][/color]"
 
         if img2_stat and img1_stat:
             scores = []
@@ -195,3 +210,55 @@ class FaceAiSvc:
         else:
             return obj_return
 
+    def check_if_data_exist(self, callback=None):
+        stat = False
+        if self.db_sess:
+            if (
+                self.db_sess.names is not None and
+                self.db_sess.matrix_embeddings is not None
+            ):
+                stat = True
+        # return via callback or normal return
+        if callback:
+            Clock.schedule_once(lambda dt: callback(stat))
+        else:
+            return stat
+
+    def save_faces_masterdb(self, name:str, image, callback=None):
+        stat = False
+        if None in (self.db_sess, self.face_recog, self.face_detect):
+            print("Please start the db & face sessions first")
+            if callback:
+                Clock.schedule_once(lambda dt: callback(stat))
+            else:
+                return stat
+
+        cropped = self.face_detect.get_single_face_cropped(image)
+        if cropped is not None:
+            embed = self.face_recog.get_face_embedding(cropped)
+            stat = self.db_sess.save_embedding(name, embed)
+            print(f"Face saved successfully for {name}")
+        else:
+            print("Issue with given frame")
+        if callback:
+            Clock.schedule_once(lambda dt: callback(stat))
+        else:
+            return stat
+
+    def face_verify(self, image, callback=None):
+        matched_name = None
+        if None in (self.db_sess, self.face_recog, self.face_detect):
+            print("Please start the db & face sessions first")
+            if callback:
+                Clock.schedule_once(lambda dt: callback(matched_name))
+            else:
+                return matched_name
+
+        cropped = self.face_detect.get_single_face_cropped(image)
+        if cropped is not None:
+            embed = self.face_recog.get_face_embedding(cropped)
+            matched_name = self.db_sess.check_face_exists(embed, self._threshold_cosine)
+        if callback:
+            Clock.schedule_once(lambda dt: callback(matched_name))
+        else:
+            return matched_name

@@ -3,7 +3,7 @@
 #:import FaceMatchBox screens.face_match.FaceMatchBox
 #:import SettingsBox screens.setting.SettingsBox
 #:import InitBox screens.init_screen.InitBox
-#:import parse_color kivy.parser.parse_color
+#:import SecurityBox screens.security.SecurityBox
 
 <DrawerClickableItem@MDNavigationDrawerItem>
     focus_color: "#e7e4c0"
@@ -45,6 +45,13 @@
             root.screen_manager.current = "faceFindScr"
 
     DrawerClickableItem:
+        icon: "security"
+        text: "Secure Vault"
+        on_press:
+            root.nav_drawer.set_state("close")
+            root.screen_manager.current = "securityScr"
+
+    DrawerClickableItem:
         icon: "wrench"
         text: "Settings & Help"
         on_press:
@@ -78,10 +85,17 @@ MDScreen:
 
                 MDScreen:
                     name: "faceFindScr"
-                    #on_enter: app.acquire_wakelock()
+                    on_enter: app.on_face_matcher_entry()
                     #on_leave: app.release_wakelock()
                     FaceMatchBox:
                         id: face_match_scr
+
+                MDScreen:
+                    name: "securityScr"
+                    on_enter: app.on_security_enter()
+                    on_leave: app.on_security_leave()
+                    SecurityBox:
+                        id: security_box
 
                 MDScreen:
                     name: "settingsScr"

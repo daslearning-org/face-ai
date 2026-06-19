@@ -7,6 +7,7 @@ from kivy.lang import Builder
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp, sp
 from kivy.utils import platform
+#from kivy.utils import get_color_from_hex
 
 # local imports
 
@@ -22,12 +23,6 @@ Builder.load_string('''
         AccordionItem:
             title: "Settings"
             spacing: dp(8)
-            canvas.before:
-                Color:
-                    rgba: (168, 183, 191, 1)
-                RoundedRectangle:
-                    size: self.width, self.height
-                    pos: self.pos
 
             MDScrollView:
                 MDList:
@@ -40,23 +35,12 @@ Builder.load_string('''
         AccordionItem:
             title: "Help & Support"
             spacing: dp(8)
-            canvas.before:
-                Color:
-                    rgba: (170, 191, 184, 1)
-                RoundedRectangle:
-                    size: self.width, self.height
-                    pos: self.pos
 
             MDScrollView:
                 MDList:
                     OneLineIconListItem:
-                        text: "Demo (How to use)"
-                        on_release: app.open_link(self, "https://youtube.com/watch?v=UGAxZFuZRtc")
-                        IconLeftWidget:
-                            icon: "youtube"
-                    OneLineIconListItem:
                         text: "Documentation (Blog)"
-                        on_release: app.open_link(self, "https://blog.daslearning.in/microcontroller/esp32/automatic-vehicle-indicator.html")
+                        on_release: app.open_link(self, "https://blog.daslearning.in/llm_ai/ml/face-ai.html")
                         IconLeftWidget:
                             icon: "file-document-check"
                     OneLineIconListItem:

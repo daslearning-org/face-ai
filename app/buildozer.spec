@@ -37,7 +37,8 @@ version.filename = %(source.dir)s/main.py
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.1, kivymd==1.2.0, pyjnius, android, docutils, filetype, pillow, Pygments, requests, plyer, coloredlogs, flatbuffers, packaging, numpy, opencv, mpmath, protobuf, sympy, onnxruntime
+requirements = python3, kivy==2.3.1, kivymd==1.2.0, pyjnius, android, docutils, filetype, pillow, Pygments, requests, plyer, flatbuffers, packaging, numpy, opencv, protobuf, onnxruntime
+# coloredlogs, mpmath, sympy
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -98,7 +99,7 @@ icon.adaptive_background.filename = %(source.dir)s/data/images/icon_bg.png
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
-android.permissions = android.permission.READ_MEDIA_IMAGES, android.permission.INTERNET, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=32)
+android.permissions = android.permission.READ_MEDIA_IMAGES, android.permission.INTERNET, android.permission.WAKE_LOCK, android.permission.CAMERA, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=32)
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host

@@ -60,7 +60,7 @@ Builder.load_string('''
             icon: "play"
             pos_hint: {'center_x': 0.5}
             size_hint_x: 0.3
-            font_size: sp(24)
+            font_size: sp(18)
             #md_bg_color: 'pink'
             on_release: app.start_face_services()
 
@@ -69,7 +69,7 @@ Builder.load_string('''
             icon: "door-open"
             pos_hint: {'center_x': 0.5}
             size_hint_x: 0.7
-            font_size: sp(24)
+            font_size: sp(18)
             md_bg_color: 'green'
             on_release: app.goto_face_matcher()
 

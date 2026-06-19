@@ -9,6 +9,7 @@ from kivy.metrics import dp, sp
 from kivy.utils import platform
 
 Builder.load_string('''
+#:import parse_color kivy.parser.parse_color
 <TempSpinWait>:
     id: temp_spin
     orientation: 'horizontal'
@@ -16,7 +17,7 @@ Builder.load_string('''
     padding: dp(8)
 
     MDLabel:
-        text: "Please wait..."
+        text: root.text
         font_style: "Subtitle1"
         adaptive_width: True
 
@@ -28,7 +29,7 @@ Builder.load_string('''
 
 <FaceMatchBox>:
     orientation: 'vertical'
-    padding: 0, 0, 0, self.bottom_pad
+    padding: 4, 0, 4, self.bottom_pad # left, top, right, bottom
     spacing: dp(4)
 
     MDGridLayout: # original image
@@ -40,6 +41,7 @@ Builder.load_string('''
 
         MDBoxLayout:
             orientation: 'vertical'
+            spacing: dp(4)
 
             MDFillRoundFlatIconButton:
                 id: btn_fm_src_upload
@@ -53,10 +55,18 @@ Builder.load_string('''
 
             MDBoxLayout:
                 id: fm_up_src_box
+                canvas.before:
+                    Color:
+                        rgb: parse_color('#c0d9bd')
+                    RoundedRectangle:
+                        size: self.width, self.height
+                        pos: self.pos
+                        radius: [0, 20, 20, 20] # clockwise from top-left
                 # add fit image here for source image
 
         MDBoxLayout:
             orientation: 'vertical'
+            spacing: dp(4)
 
             MDFillRoundFlatIconButton:
                 id: btn_fm_tgt_upload
@@ -70,9 +80,16 @@ Builder.load_string('''
 
             MDBoxLayout:
                 id: fm_up_trgt_box
+                canvas.before:
+                    Color:
+                        rgb: parse_color('#c0d9bd')
+                    RoundedRectangle:
+                        size: self.width, self.height
+                        pos: self.pos
+                        radius: [20, 0, 20, 20] # clockwise from top-left
                 # add fit image here for source image
 
-    MDGridLayout: # buttons
+    MDGridLayout: # action buttons
         cols: 3
         size_hint_y: 0.1
         spacing: dp(4)
@@ -95,30 +112,45 @@ Builder.load_string('''
             font_size: sp(18)
             md_bg_color: '#333036'
             pos_hint: {"center_x": .5, "center_y": .5}
-            size_hint_x: 0.2
+            size_hint_x: 0.4
             on_release: app.reset_face_matcher()
 
     MDGridLayout: # generated images
         cols: 2
-        size_hint_y: 0.4
+        size_hint_y: 0.5
         id: fm_gen_box
         spacing: dp(4)
+        padding: 0, 0, 0, 4
 
         MDBoxLayout:
             id: fm_gen_src_box
             orientation: 'vertical'
+            canvas.before:
+                Color:
+                    rgb: parse_color('#abdbf5')
+                RoundedRectangle:
+                    size: self.width, self.height
+                    pos: self.pos
+                    radius: [20, 20, 20, 0] # clockwise from top-left
             # add fit image here for source image
 
         MDBoxLayout:
             id: fm_gen_trgt_box
             orientation: 'vertical'
+            canvas.before:
+                Color:
+                    rgb: parse_color('#abdbf5')
+                RoundedRectangle:
+                    size: self.width, self.height
+                    pos: self.pos
+                    radius: [20, 20, 0, 20] # clockwise from top-left
             # add fit image here for target image
 
 
 ''')
 
 class TempSpinWait(MDBoxLayout):
-    pass
+    text = StringProperty("Please wait...")
 
 class FaceMatchBox(MDBoxLayout):
     top_pad = NumericProperty(0)
@@ -126,7 +158,7 @@ class FaceMatchBox(MDBoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = "settings_main_bx"
+        self.name = "face_matcher_box"
         if platform == "android":
             try:
                 from android.display_cutout import get_height_of_bar
