@@ -15,6 +15,7 @@ from kivy.uix.widget import Widget
 
 ## The .kv strings
 Builder.load_string('''
+#:import parse_color kivy.parser.parse_color
 
 <SecSingleFile>:
     id: root.filename
@@ -56,6 +57,12 @@ Builder.load_string('''
 
     MDScrollView:
         size_hint_y: 0.8
+        canvas.before:
+            Color:
+                rgb: parse_color('#f7e8c6')
+            RoundedRectangle:
+                size: self.width, self.height
+                pos: self.pos
         MDList:
             id: sec_file_list
             # add all files here
@@ -90,7 +97,9 @@ Builder.load_string('''
         md_bg_color: "#333036"
         pos_hint: {"center_x": .5, "center_y": 1}
         size_hint_x: 0.5
-        on_release: app.sec_capture_frame(sec_name_inp_txt, False)
+        on_release: app.sec_capture_frame(sec_name_inp_txt, True)
+    Widget:
+        size_hint_y: 0.5
 
 <SecCamBtn>:
     id: sec_cam_btn
@@ -121,8 +130,6 @@ Builder.load_string('''
 
         # Dynamic things will be added here
 
-    Widget:
-        size_hint_y: 0.5
 ''')
 
 # the classes

@@ -23,6 +23,7 @@ from kivy.lang import Builder
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty
+from kivy.uix.widget import Widget
 
 from plyer import filechooser
 
@@ -743,38 +744,56 @@ class FaceAiApp(MDApp):
             self.tmp_spinner = TempSpinWait()
             self.tmp_spinner.text = "Checking database, please wait..."
             self.sec_uix.add_widget(self.tmp_spinner)
+            height_widget = Widget(
+                size_hint_y = 0.5
+            )
+            self.sec_uix.add_widget(height_widget)
             Clock.schedule_once(lambda dt: self.face_ai.check_if_data_exist(self._init_security_callback))
+
+    def android_front_cam(self):
+        from services.androidSvc import AndroidSvc
+        cam_svc = AndroidSvc()
+        cam_map = cam_svc.get_camera_details()
+        cam_id = cam_map.get("front", None)
+        return cam_id
 
     def add_camera(self, parent_element):
         #self.sec_uix = self.root.ids.security_box.ids.camera_box
         if self.sec_uix:
             self.sec_uix.clear_widgets()
         self.sec_uix = parent_element
+        cam_indx = 0
         if platform == "android":
-            cam_indx = 0
+            cam_id = self.android_front_cam()
+            if cam_id:
+                cam_indx = int(cam_id)
             resolution = (960, 720) # will fallback to 480 if fails again
         else:
             resolution = (640, 480)
-            import cv2
-            available_cameras = []
-            for i in range(2):
-                cap = cv2.VideoCapture(i)
-                if cap.isOpened():
-                    print(f"Camera found at index: {i}")
-                    available_cameras.append(i)
-                    cap.release()
-            if len(available_cameras) >= 1:
-                cam_indx = available_cameras[0]
-            else:
-                self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
-                return
+            if not self.camera:
+                import cv2
+                available_cameras = []
+                for i in range(2):
+                    cap = cv2.VideoCapture(i)
+                    if cap.isOpened():
+                        print(f"Camera found at index: {i}")
+                        available_cameras.append(i)
+                        cap.release()
+                if len(available_cameras) >= 1:
+                    cam_indx = available_cameras[0]
+                else:
+                    self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
+                    return
         try:
-            self.camera = Camera(
-                index = cam_indx,
-                resolution = resolution,
-                fit_mode = "contain",
-                play = True
-            )
+            if not self.camera:
+                self.camera = Camera(
+                    index = cam_indx,
+                    resolution = resolution,
+                    fit_mode = "contain",
+                    play = True
+                )
+            else:
+                self.camera.play = True
             self.sec_uix.add_widget(self.camera)
         except Exception as e:
             print(f"Error setting up the camera: {e}")
@@ -786,7 +805,11 @@ class FaceAiApp(MDApp):
 
     def add_login_btn(self, parent_element):
         login_btn = SecCamBtn()
+        height_widget = Widget(
+            size_hint_y = 0.5
+        )
         parent_element.add_widget(login_btn)
+        parent_element.add_widget(height_widget)
 
     def _init_security_callback(self, resp): # should not be called directly
         if self.login_success:
@@ -826,8 +849,8 @@ class FaceAiApp(MDApp):
     def sec_login_ok(self, msg:str="Login"):
         if self.camera:
             self.camera.play = False
-            self.camera._camera.stop()
-            self.camera = None
+            #self.camera._camera.stop()
+            #self.camera = None
         if self.sec_uix:
             self.sec_uix.clear_widgets()
         self.sec_file_box = SecAfterLogin()
@@ -965,8 +988,8 @@ class FaceAiApp(MDApp):
     def on_security_leave(self):
         if self.camera:
             self.camera.play = False
-            self.camera._camera.stop()
-            self.camera = None
+            #self.camera._camera.stop()
+            #self.camera = None
             print("Camera has been stopped")
         if self.sec_uix:
             self.sec_uix.clear_widgets()
