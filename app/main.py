@@ -134,6 +134,7 @@ class FaceAiApp(MDApp):
             self.total_permissions.extend(self.android_permissions)
             request_permissions(self.total_permissions)
             self.internal_storage = app_storage_path()
+            self.encrypt_key = None
             try:
                 Environment = autoclass("android.os.Environment")
                 self.external_storage = Environment.getExternalStorageDirectory().getAbsolutePath()
@@ -143,6 +144,7 @@ class FaceAiApp(MDApp):
         else:
             self.internal_storage = self.user_data_dir
             self.external_storage = os.path.expanduser("~")
+            self.encrypt_key = os.path.join(self.internal_storage, 'config', 'vault.key')
         # remaining start activities
         self.model_dir = os.path.join(self.internal_storage, 'model_files')
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
@@ -185,6 +187,14 @@ class FaceAiApp(MDApp):
         else:
             with open(self.usr_pref_path, "w") as pf:
                 json.dump(self.user_preferences, pf)
+        # set encryption key for non android
+        if self.encrypt_key:
+            if not os.path.exists(self.encrypt_key):
+                from cryptography.fernet import Fernet
+                key = Fernet.generate_key()
+                with open(self.encrypt_key, "wb") as key_file:
+                    key_file.write(key)
+                print("Generated the encryption key")
         # check if model files are present
         Clock.schedule_once(lambda dt: self.model_existance_check())
         print("Init success...")
@@ -666,15 +676,30 @@ class FaceAiApp(MDApp):
         dir_name = os.path.dirname(path)
         self.last_downlaod_path = dir_name
         chosen_path = os.path.join(path, filename) # destination path
-        import shutil
         try:
-            shutil.copyfile(self.download_file_path, chosen_path)
-            print(f"File successfully download to: {chosen_path}")
-            self.show_toast_msg(f"File download to: {chosen_path}")
-            self.delete_file_path = str(self.download_file_path)
-            if self.root.ids.screen_manager.current in ("faceFindScr"):
+            if (self.root.ids.screen_manager.current in ("faceFindScr") or 
+                platform == "android"
+            ):
+                import shutil
+                shutil.copyfile(self.download_file_path, chosen_path)
+                self.delete_file_path = str(self.download_file_path)
                 self.download_file_path = None
                 self.delete_file_popup()
+            elif (self.root.ids.screen_manager.current in ("securityScr") and 
+                  platform != "android"
+                ):
+                # decrypt the data
+                from cryptography.fernet import Fernet
+                with open(self.encrypt_key, "rb") as key_file:
+                    key = key_file.read()
+                fernet = Fernet(key)
+                with open(self.download_file_path, "rb") as enc_file:
+                    encrypted_data = enc_file.read()
+                decrypted_data = fernet.decrypt(encrypted_data)
+                with open(chosen_path, "wb") as file:
+                    file.write(decrypted_data)
+            print(f"File successfully download to: {chosen_path}")
+            self.show_toast_msg(f"File download to: {chosen_path}")
         except Exception as e:
             print(f"Error saving file: {e}")
             self.show_toast_msg(f"Error saving file: {e}", is_error=True)
@@ -841,7 +866,7 @@ class FaceAiApp(MDApp):
             files.append(filename)
         return files
 
-    def refresh_sec_file_list(self):
+    def refresh_sec_file_list(self, instance=None):
         if self.sec_file_box:
             secMdList = self.sec_file_box.ids.sec_file_list
             secMdList.clear_widgets()
@@ -949,24 +974,38 @@ class FaceAiApp(MDApp):
         except Exception as e:
             print(f"Error processing frame: {e}")
 
+    def vault_file_saver(self, file_path:str):
+        filename = os.path.basename(file_path)
+        target_file = os.path.join(self.sec_file_dir, filename)
+        try:
+            if platform == "android":
+                # encryption not required on android as the internal path is secure
+                import shutil
+                shutil.copyfile(file_path, target_file)
+            else:
+                # store encrypted data
+                from cryptography.fernet import Fernet
+                with open(self.encrypt_key, "rb") as key_file:
+                    key = key_file.read()
+                fernet = Fernet(key)
+                with open(file_path, "rb") as file:
+                    original_data = file.read()
+                encrypted_data = fernet.encrypt(original_data)
+                with open(target_file, "wb") as tfile:
+                    tfile.write(encrypted_data)
+            print(f"File {filename} successfully uploaded to vault")
+            self.refresh_sec_file_list()
+            self.show_toast_msg(f"File {filename} successfully uploaded to vault")
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            self.show_toast_msg(f"Error saving file: {e}", is_error=True)
+
     def save_in_vault(self, selection):
         self.is_inp_file_mgr_open = False
         if selection:
             file_path = str(selection[0])
             self.last_upload_path = os.path.dirname(file_path)
-            filename = os.path.basename(file_path)
-            target_file = os.path.join(self.sec_file_dir, filename)
-            import shutil
-            try:
-                shutil.copyfile(file_path, target_file)
-                print(f"File successfully uploaded to: {target_file}")
-                self.show_toast_msg(f"File uploaded to: {target_file}")
-                Clock.schedule_once(lambda dt: self.refresh_sec_file_list())
-                #self.delete_file_path = str(file_path)
-                #self.delete_file_popup()
-            except Exception as e:
-                print(f"Error saving file: {e}")
-                self.show_toast_msg(f"Error saving file: {e}", is_error=True)
+            Clock.schedule_once(lambda dt: self.vault_file_saver(file_path))
 
     def upload_to_vault(self, instance=None):
         permissions_ok = self.check_request_android_permission()

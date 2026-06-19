@@ -7,7 +7,7 @@ We will use Face Detection, Face Recognition and some other related offline AI t
 
 ### 🤔 Why would you choose our app? (Features)
 👉 Offline Face Detection and Recognition. <br>
-👉 Store secret files which can only be unlocked by your face. <br>
+👉 Store secret files which can only be unlocked by your face. On `non-android` platform, files will be encrypted. <br>
 👉 Cross-platform and Open Source. <br>
 
 ## 💰 Sponsor Me

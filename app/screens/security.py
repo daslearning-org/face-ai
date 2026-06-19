@@ -33,12 +33,12 @@ Builder.load_string('''
     spacing: dp(4)
 
     MDGridLayout:
-        cols: 2
+        cols: 3
         spacing: dp(4)
         adaptive_height: True
         MDFillRoundFlatIconButton:
             id: vault_up_btn
-            text: "Upload File"
+            text: "Upload"
             icon: "folder-key"
             font_size: sp(18)
             #md_bg_color: "#333036"
@@ -47,7 +47,16 @@ Builder.load_string('''
             on_release: app.upload_to_vault()
         MDFillRoundFlatIconButton:
             id: add_new_face_btn
-            text: "Add Another Face"
+            text: "Refresh"
+            icon: "refresh"
+            font_size: sp(18)
+            #md_bg_color: "#333036"
+            pos_hint: {"center_x": .5, "center_y": 1}
+            size_hint_x: 0.5
+            on_release: app.refresh_sec_file_list()
+        MDFillRoundFlatIconButton:
+            id: add_new_face_btn
+            text: "Add Face"
             icon: "face-recognition"
             font_size: sp(18)
             md_bg_color: "#333036"
