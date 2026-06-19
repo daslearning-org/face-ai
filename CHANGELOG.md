@@ -1,5 +1,8 @@
 ## Changes
 
+### 0.1.1
+- Changing camera with plyer camera on android.
+
 ### 0.1.0
 - Adding a `Secure Vault` feature to store secret files.
 - Pop-Up with a quick tip for the chosen feature.

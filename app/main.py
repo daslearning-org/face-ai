@@ -25,7 +25,7 @@ from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty
 from kivy.uix.widget import Widget
 
-from plyer import filechooser
+from plyer import filechooser, camera as pl_cam
 
 # local imports
 from services.faceAi import FaceAiSvc
@@ -101,6 +101,8 @@ class FaceAiApp(MDApp):
         self.sec_file_box = None
         self.sec_file_current_path = None
         self.android_cam_id = None
+        self.tmp_login_name = ""
+        self.new_face_req = False
         self.user_preferences = {
             "fm_dont_again": False,
             "sec_dont_again": False
@@ -151,6 +153,7 @@ class FaceAiApp(MDApp):
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
         self.config_dir = os.path.join(self.internal_storage, 'config')
         self.sec_file_dir = os.path.join(self.internal_storage, 'secure_files')
+        self.tmp_dir = os.path.join(self.internal_storage, 'tmp_files')
         db_dir = os.path.join(self.internal_storage, 'databases')
         self.last_upload_path = None
         self.last_downlaod_path = None
@@ -158,10 +161,13 @@ class FaceAiApp(MDApp):
         self.trgt_image_path = None
         self.download_file_path = None
         self.delete_file_path = None
+        self.tmp_login_filename = None
+        self.tmp_login_name = ""
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         os.makedirs(self.config_dir, exist_ok=True)
         os.makedirs(self.sec_file_dir, exist_ok=True)
+        os.makedirs(self.tmp_dir, exist_ok=True)
         os.makedirs(db_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
         self.config_path = os.path.join(self.config_dir, 'config.json')
@@ -795,42 +801,47 @@ class FaceAiApp(MDApp):
         self.sec_uix = parent_element
         cam_indx = -1
         if platform == "android":
-            if self.android_cam_id is not None:
-                cam_indx = int(self.android_cam_id)
-            else:
-                self.android_cam_id = self.android_front_cam()
-                cam_indx = int(self.android_cam_id)
-            resolution = (960, 720) # will fallback to 480 if fails again
+            #if self.android_cam_id is not None:
+            #    cam_indx = int(self.android_cam_id)
+            #else:
+            #    self.android_cam_id = self.android_front_cam()
+            #    cam_indx = int(self.android_cam_id)
+            #resolution = (960, 720) # will fallback to 480 if fails again
+            import datetime
+            now = datetime.datetime.now()
+            current_time = str(now.strftime("%H%M%S"))
+            current_date = str(now.strftime("%Y%m%d"))
+            self.tmp_login_filename = os.path.join(self.tmp_dir, f"login_{current_date}_{current_time}.jpg")
+        # for non-android devices
         else:
             resolution = (640, 480)
-            if not self.camera:
-                import cv2
-                available_cameras = []
-                for i in range(2):
-                    cap = cv2.VideoCapture(i)
-                    if cap.isOpened():
-                        print(f"Camera found at index: {i}")
-                        available_cameras.append(i)
-                        cap.release()
-                if len(available_cameras) >= 1:
-                    cam_indx = available_cameras[0]
+            try:
+                if not self.camera:
+                    import cv2
+                    available_cameras = []
+                    for i in range(2):
+                        cap = cv2.VideoCapture(i)
+                        if cap.isOpened():
+                            print(f"Camera found at index: {i}")
+                            available_cameras.append(i)
+                            cap.release()
+                    if len(available_cameras) >= 1:
+                        cam_indx = available_cameras[0]
+                    else:
+                        self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
+                        return
+                    self.camera = Camera(
+                        index = cam_indx,
+                        resolution = resolution,
+                        fit_mode = "contain",
+                        play = True
+                    )
                 else:
-                    self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
-                    return
-        try:
-            if not self.camera:
-                self.camera = Camera(
-                    index = cam_indx,
-                    resolution = resolution,
-                    fit_mode = "contain",
-                    play = True
-                )
-            else:
-                self.camera.play = True
-            self.sec_uix.add_widget(self.camera)
-        except Exception as e:
-            print(f"Error setting up the camera: {e}")
-            self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
+                    self.camera.play = True
+                self.sec_uix.add_widget(self.camera)
+            except Exception as e:
+                print(f"Error setting up the camera: {e}")
+                self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
 
     def add_name_input(self, parent_element):
         name_inp_elem = NameInput()
@@ -955,6 +966,19 @@ class FaceAiApp(MDApp):
                 self.sec_login_ok()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
 
+    def after_android_login_photo(self, instance=None):
+        if self.tmp_login_filename is None or not os.path.exists(self.tmp_login_filename):
+            self.show_toast_msg("Android photo error", True, 2)
+            return
+        import cv2
+        img = cv2.imread(self.tmp_login_filename)
+        self.sec_face_login_save(self.tmp_login_name, img, self.new_face_req)
+        os.remove(self.tmp_login_filename)
+        self.tmp_login_filename = None
+        self.tmp_login_name = ""
+        if self.new_face_req:
+            self.new_face_req = False
+
     def sec_capture_frame(self, instance=None, newFace=False):
         if not self.camera or not self.camera.texture:
             self.show_toast_msg("Camera is Not OK", True, 2)
@@ -965,17 +989,28 @@ class FaceAiApp(MDApp):
         else:
             name_txt = ""
         try:
-            import cv2
-            import numpy as np
-            texture = self.camera.texture
-            pixels = texture.pixels
-            width, height = texture.size
-            arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
-            if platform == 'android':
-                arr = np.flipud(arr)  # Flip up down in android
-            img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
-            #print(img)
-            self.sec_face_login_save(name_txt, img, newFace)
+            if platform == "android":
+                if len(name_txt) < 3:
+                    self.show_toast_msg("Please enter a proper name", True)
+                    return
+                self.tmp_login_name = name_txt
+                if newFace:
+                    self.new_face_req = True
+                pl_cam.take_picture(
+                    filename=self.tmp_login_filename,
+                    on_complete=self.after_android_login_photo
+                )
+            else:
+                import cv2
+                import numpy as np
+                texture = self.camera.texture
+                pixels = texture.pixels
+                width, height = texture.size
+                arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
+                # if above solution fails, will add 90 rotate
+                img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+                #print(img)
+                self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
             print(f"Error processing frame: {e}")
 
