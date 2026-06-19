@@ -38,7 +38,7 @@ from screens.setting import SettingsBox
 Window.softinput_mode = "below_target"
 
 ## Global definitions
-__version__ = "0.1.0" # App version
+__version__ = "0.1.1" # App version
 
 # Determine the base path for your application's resources
 if getattr(sys, 'frozen', False):
@@ -980,9 +980,6 @@ class FaceAiApp(MDApp):
             self.new_face_req = False
 
     def sec_capture_frame(self, instance=None, newFace=False):
-        if not self.camera or not self.camera.texture:
-            self.show_toast_msg("Camera is Not OK", True, 2)
-            return
         if instance:
             name_txt = str(instance.text)
             name_txt = name_txt.strip()
@@ -990,9 +987,6 @@ class FaceAiApp(MDApp):
             name_txt = ""
         try:
             if platform == "android":
-                if len(name_txt) < 3:
-                    self.show_toast_msg("Please enter a proper name", True)
-                    return
                 self.tmp_login_name = name_txt
                 if newFace:
                     self.new_face_req = True
@@ -1001,6 +995,9 @@ class FaceAiApp(MDApp):
                     on_complete=self.after_android_login_photo
                 )
             else:
+                if not self.camera or not self.camera.texture:
+                    self.show_toast_msg("Camera is Not OK", True, 2)
+                    return
                 import cv2
                 import numpy as np
                 texture = self.camera.texture
