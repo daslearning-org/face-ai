@@ -100,6 +100,7 @@ class FaceAiApp(MDApp):
         self.face_reg_error = False
         self.sec_file_box = None
         self.sec_file_current_path = None
+        self.android_cam_id = None
         self.user_preferences = {
             "fm_dont_again": False,
             "sec_dont_again": False
@@ -792,11 +793,13 @@ class FaceAiApp(MDApp):
         if self.sec_uix:
             self.sec_uix.clear_widgets()
         self.sec_uix = parent_element
-        cam_indx = 0
+        cam_indx = -1
         if platform == "android":
-            cam_id = self.android_front_cam()
-            if cam_id:
-                cam_indx = int(cam_id)
+            if self.android_cam_id is not None:
+                cam_indx = int(self.android_cam_id)
+            else:
+                self.android_cam_id = self.android_front_cam()
+                cam_indx = int(self.android_cam_id)
             resolution = (960, 720) # will fallback to 480 if fails again
         else:
             resolution = (640, 480)
@@ -931,14 +934,16 @@ class FaceAiApp(MDApp):
                 stat = self.face_ai.save_faces_masterdb(name, img)
                 if stat:
                     self.data_in_db = True
-                    self.sec_login_ok("SignUp")
+                    self.login_success = False
+                    self.on_security_enter()
                     Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added in database."))
                 else:
                     self.show_toast_msg("Face is not saved, please try again", True)
                     self.face_reg_error = True
             else:
-                msg = f"This face is already saved for: {str(matched_name[0])}"
-                self.sec_login_ok()
+                msg = f"This face is already saved for: {str(matched_name)}"
+                self.login_success = False
+                self.on_security_enter()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
         else:
             print("There is existing face(s)")
@@ -946,7 +951,7 @@ class FaceAiApp(MDApp):
             if matched_name is None:
                 self.show_toast_msg("Face is not matched", True)
             else:
-                msg = f"Logged in as: {str(matched_name[0])}"
+                msg = f"Logged in as: {str(matched_name)}"
                 self.sec_login_ok()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
 

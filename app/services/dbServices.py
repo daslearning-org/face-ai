@@ -75,15 +75,17 @@ class FaceDbSvc:
         ):
             print("There is no face yet")
             return
-        print("matrix shape:", self.matrix_embeddings.shape)
-        print("matrix dtype:", self.matrix_embeddings.dtype)
-        print("query shape:", query_embedding.shape)
-        print("query dtype:", query_embedding.dtype)
+        #print("matrix shape:", self.matrix_embeddings.shape)
+        #print("matrix dtype:", self.matrix_embeddings.dtype)
+        #print("query shape:", query_embedding.shape)
+        #print("query dtype:", query_embedding.dtype)
         similarities = self.matrix_embeddings @ query_embedding
         best_idx = np.argmax(similarities)
         best_score = similarities[best_idx]
+        name = self.names[best_idx]
+        print(f"Best score: {best_score} & name: {name}")
         if best_score >= threashold:
-            matched_name = self.names
+            matched_name = name
         else:
             matched_name = None
         return matched_name
