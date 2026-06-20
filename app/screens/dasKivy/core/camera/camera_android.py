@@ -5,6 +5,7 @@ from kivy.graphics import Fbo, Callback, Rectangle
 from kivy.core.camera import CameraBase
 import threading
 
+print("CUSTOM camera_android imported")
 
 Camera = autoclass('android.hardware.Camera')
 SurfaceTexture = autoclass('android.graphics.SurfaceTexture')
@@ -23,6 +24,7 @@ class PreviewCallback(PythonJavaClass):
     __javainterfaces__ = ('android.hardware.Camera$PreviewCallback', )
 
     def __init__(self, callback):
+        print("CameraAndroid __init__")
         super(PreviewCallback, self).__init__()
         self._callback = callback
 
@@ -130,9 +132,14 @@ class CameraAndroid(CameraBase):
 
             void main()
             {
-                vec2 coord = vec2(tex_coord0.y * (
+                /* vec2 coord = vec2(tex_coord0.y * (
                     resolution.y / resolution.x), 1. -tex_coord0.x);
-                gl_FragColor = texture2D(texture1, tex_coord0);
+                gl_FragColor = texture2D(texture1, tex_coord0); */
+                vec2 coord = vec2(
+                    1.0 - tex_coord0.y,
+                    tex_coord0.x
+                );
+                gl_FragColor = texture2D(texture1, coord);
             }
         '''
         with self._fbo:

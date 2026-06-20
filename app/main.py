@@ -14,7 +14,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDFloatingActionButton
 
-#from kivy.uix.camera import Camera
+#
 from kivy.clock import Clock
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -32,7 +32,6 @@ from services.faceAi import FaceAiSvc
 from screens.init_screen import ModelDownloder
 from screens.face_match import TempSpinWait, FaceMatchBox
 from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox, SecAfterLogin, SecSingleFile
-from screens.dasKivy.uix.camera import Camera
 from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
@@ -54,6 +53,9 @@ kv_file_path = os.path.join(base_path, 'main_layout.kv')
 if platform == "android":
     from jnius import autoclass, cast, PythonJavaClass, java_method
     from android.permissions import check_permission, request_permissions, Permission
+    from screens.dasKivy.uix.camera import Camera
+else:
+    from kivy.uix.camera import Camera
 
 ## -- kivy custom classes -- ##
 

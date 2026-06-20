@@ -148,4 +148,7 @@ else:
 providers += (('opencv', 'camera_opencv', 'CameraOpenCV'), )
 
 
-Camera = core_select_lib('camera', (providers))
+print("About to select camera provider")
+from screens.dasKivy.core.camera.camera_android import CameraAndroid
+Camera = CameraAndroid
+print("Selected camera provider:", Camera)
