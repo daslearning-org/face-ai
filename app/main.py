@@ -14,7 +14,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDFloatingActionButton
 
-from kivy.uix.camera import Camera
+#from kivy.uix.camera import Camera
 from kivy.clock import Clock
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -32,6 +32,7 @@ from services.faceAi import FaceAiSvc
 from screens.init_screen import ModelDownloder
 from screens.face_match import TempSpinWait, FaceMatchBox
 from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox, SecAfterLogin, SecSingleFile
+from screens.kivyCam.uix.camera import Camera
 from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
