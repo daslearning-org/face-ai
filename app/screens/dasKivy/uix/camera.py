@@ -28,7 +28,7 @@ You can also select the camera resolution::
 __all__ = ('Camera', )
 
 from kivy.uix.image import Image
-from kivy.core.camera import Camera as CoreCamera
+from screens.dasKivy.core.camera import Camera as CoreCamera
 from kivy.properties import NumericProperty, ListProperty, \
     BooleanProperty
 

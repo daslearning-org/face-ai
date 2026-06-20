@@ -32,7 +32,7 @@ from services.faceAi import FaceAiSvc
 from screens.init_screen import ModelDownloder
 from screens.face_match import TempSpinWait, FaceMatchBox
 from screens.security import SecCamBox, SecCamBtn, NameInput, SecurityBox, SecAfterLogin, SecSingleFile
-from screens.kivyCam.uix.camera import Camera
+from screens.dasKivy.uix.camera import Camera
 from screens.setting import SettingsBox
 
 # IMPORTANT: Set this property for keyboard behavior
