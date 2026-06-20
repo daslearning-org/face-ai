@@ -165,7 +165,6 @@ class FaceAiApp(MDApp):
         self.download_file_path = None
         self.delete_file_path = None
         self.tmp_login_filename = None
-        self.tmp_login_name = ""
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         os.makedirs(self.config_dir, exist_ok=True)
@@ -694,7 +693,8 @@ class FaceAiApp(MDApp):
                 shutil.copyfile(self.download_file_path, chosen_path)
                 self.delete_file_path = str(self.download_file_path)
                 self.download_file_path = None
-                self.delete_file_popup()
+                if (self.root.ids.screen_manager.current in ("faceFindScr")):
+                    self.delete_file_popup()
             elif (self.root.ids.screen_manager.current in ("securityScr") and 
                   platform != "android"
                 ):
@@ -986,8 +986,8 @@ class FaceAiApp(MDApp):
             arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
             img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
             if platform == 'android':
+                img = np.flipud(img)  # Flip up down in android
                 cv2.imwrite(self.tmp_login_filename, img) # to debug the capture
-                #arr = np.flipud(arr)  # Flip up down in android
             #print(img)
             self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
