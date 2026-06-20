@@ -987,7 +987,7 @@ class FaceAiApp(MDApp):
             img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
             if platform == 'android':
                 img = np.flipud(img)  # Flip up down in android
-                cv2.imwrite(self.tmp_login_filename, img) # to debug the capture
+                #cv2.imwrite(self.tmp_login_filename, img) # to debug the capture
             #print(img)
             self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
