@@ -14,7 +14,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton, MDFloatingActionButton
 
-from kivy.uix.camera import Camera
+#
 from kivy.clock import Clock
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -25,7 +25,7 @@ from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty
 from kivy.uix.widget import Widget
 
-from plyer import filechooser
+from plyer import filechooser #, camera as pl_cam
 
 # local imports
 from services.faceAi import FaceAiSvc
@@ -38,7 +38,7 @@ from screens.setting import SettingsBox
 Window.softinput_mode = "below_target"
 
 ## Global definitions
-__version__ = "0.1.0" # App version
+__version__ = "0.1.1" # App version
 
 # Determine the base path for your application's resources
 if getattr(sys, 'frozen', False):
@@ -53,6 +53,9 @@ kv_file_path = os.path.join(base_path, 'main_layout.kv')
 if platform == "android":
     from jnius import autoclass, cast, PythonJavaClass, java_method
     from android.permissions import check_permission, request_permissions, Permission
+    from screens.dasKivy.uix.camera import Camera
+else:
+    from kivy.uix.camera import Camera
 
 ## -- kivy custom classes -- ##
 
@@ -100,6 +103,9 @@ class FaceAiApp(MDApp):
         self.face_reg_error = False
         self.sec_file_box = None
         self.sec_file_current_path = None
+        self.used_cam_id = None
+        self.tmp_login_name = ""
+        self.new_face_req = False
         self.user_preferences = {
             "fm_dont_again": False,
             "sec_dont_again": False
@@ -150,6 +156,7 @@ class FaceAiApp(MDApp):
         self.op_dir = os.path.join(self.internal_storage, 'outputs')
         self.config_dir = os.path.join(self.internal_storage, 'config')
         self.sec_file_dir = os.path.join(self.internal_storage, 'secure_files')
+        self.tmp_dir = os.path.join(self.internal_storage, 'tmp_files')
         db_dir = os.path.join(self.internal_storage, 'databases')
         self.last_upload_path = None
         self.last_downlaod_path = None
@@ -157,10 +164,12 @@ class FaceAiApp(MDApp):
         self.trgt_image_path = None
         self.download_file_path = None
         self.delete_file_path = None
+        self.tmp_login_filename = None
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.op_dir, exist_ok=True)
         os.makedirs(self.config_dir, exist_ok=True)
         os.makedirs(self.sec_file_dir, exist_ok=True)
+        os.makedirs(self.tmp_dir, exist_ok=True)
         os.makedirs(db_dir, exist_ok=True)
         print(f"Internal model files to be stored in: {self.model_dir}")
         self.config_path = os.path.join(self.config_dir, 'config.json')
@@ -684,7 +693,8 @@ class FaceAiApp(MDApp):
                 shutil.copyfile(self.download_file_path, chosen_path)
                 self.delete_file_path = str(self.download_file_path)
                 self.download_file_path = None
-                self.delete_file_popup()
+                if (self.root.ids.screen_manager.current in ("faceFindScr")):
+                    self.delete_file_popup()
             elif (self.root.ids.screen_manager.current in ("securityScr") and 
                   platform != "android"
                 ):
@@ -772,7 +782,7 @@ class FaceAiApp(MDApp):
         self.db_conn_ok = self.face_ai.start_db_session(self.db_path)
         if self.db_conn_ok:
             self.tmp_spinner = TempSpinWait()
-            self.tmp_spinner.text = "Checking database, please wait..."
+            self.tmp_spinner.text_to_show = "Checking database, please wait..."
             self.sec_uix.add_widget(self.tmp_spinner)
             height_widget = Widget(
                 size_hint_y = 0.5
@@ -789,31 +799,42 @@ class FaceAiApp(MDApp):
 
     def add_camera(self, parent_element):
         #self.sec_uix = self.root.ids.security_box.ids.camera_box
-        if self.sec_uix:
-            self.sec_uix.clear_widgets()
+        self.on_security_leave()
         self.sec_uix = parent_element
-        cam_indx = 0
+        cam_indx = -1
         if platform == "android":
-            cam_id = self.android_front_cam()
-            if cam_id:
-                cam_indx = int(cam_id)
+            if self.used_cam_id is not None:
+                cam_indx = int(self.used_cam_id)
+            else:
+                self.used_cam_id = self.android_front_cam()
+                cam_indx = int(self.used_cam_id)
             resolution = (960, 720) # will fallback to 480 if fails again
+            import datetime
+            now = datetime.datetime.now()
+            current_time = str(now.strftime("%H%M%S"))
+            current_date = str(now.strftime("%Y%m%d"))
+            self.tmp_login_filename = os.path.join(self.sec_file_dir, f"login_{current_date}_{current_time}.jpg")
+        # for non-android devices
         else:
             resolution = (640, 480)
             if not self.camera:
-                import cv2
-                available_cameras = []
-                for i in range(2):
-                    cap = cv2.VideoCapture(i)
-                    if cap.isOpened():
-                        print(f"Camera found at index: {i}")
-                        available_cameras.append(i)
-                        cap.release()
-                if len(available_cameras) >= 1:
-                    cam_indx = available_cameras[0]
+                if self.used_cam_id is not None:
+                    cam_indx = int(self.used_cam_id)
                 else:
-                    self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
-                    return
+                    import cv2
+                    available_cameras = []
+                    for i in range(2):
+                        cap = cv2.VideoCapture(i)
+                        if cap.isOpened():
+                            print(f"Camera found at index: {i}")
+                            available_cameras.append(i)
+                            cap.release()
+                    if len(available_cameras) >= 1:
+                        self.used_cam_id = cam_indx = available_cameras[0]
+                    else:
+                        self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
+                        return
+        # using custom kivy cam for all env
         try:
             if not self.camera:
                 self.camera = Camera(
@@ -901,12 +922,7 @@ class FaceAiApp(MDApp):
             )
 
     def sec_login_ok(self, msg:str="Login"):
-        if self.camera:
-            self.camera.play = False
-            #self.camera._camera.stop()
-            #self.camera = None
-        if self.sec_uix:
-            self.sec_uix.clear_widgets()
+        self.on_security_leave()
         self.sec_file_box = SecAfterLogin()
         secMdList = self.sec_file_box.ids.sec_file_list
         sec_files = self.get_sec_file_list(self.sec_file_dir)
@@ -931,14 +947,16 @@ class FaceAiApp(MDApp):
                 stat = self.face_ai.save_faces_masterdb(name, img)
                 if stat:
                     self.data_in_db = True
-                    self.sec_login_ok("SignUp")
+                    self.login_success = False
+                    self.on_security_enter()
                     Clock.schedule_once(lambda dt: self.show_toast_msg(f"{name}'s face has been added in database."))
                 else:
                     self.show_toast_msg("Face is not saved, please try again", True)
                     self.face_reg_error = True
             else:
-                msg = f"This face is already saved for: {str(matched_name[0])}"
-                self.sec_login_ok()
+                msg = f"This face is already saved for: {str(matched_name)}"
+                self.login_success = False
+                self.on_security_enter()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
         else:
             print("There is existing face(s)")
@@ -946,7 +964,7 @@ class FaceAiApp(MDApp):
             if matched_name is None:
                 self.show_toast_msg("Face is not matched", True)
             else:
-                msg = f"Logged in as: {str(matched_name[0])}"
+                msg = f"Logged in as: {str(matched_name)}"
                 self.sec_login_ok()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
 
@@ -966,9 +984,10 @@ class FaceAiApp(MDApp):
             pixels = texture.pixels
             width, height = texture.size
             arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
-            if platform == 'android':
-                arr = np.flipud(arr)  # Flip up down in android
             img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+            if platform == 'android':
+                img = np.flipud(img)  # Flip up down in android
+                #cv2.imwrite(self.tmp_login_filename, img) # to debug the capture
             #print(img)
             self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
@@ -1057,8 +1076,8 @@ class FaceAiApp(MDApp):
     def on_security_leave(self):
         if self.camera:
             self.camera.play = False
-            #self.camera._camera.stop()
-            #self.camera = None
+            if platform == "android":
+                self.camera = None
             print("Camera has been stopped")
         if self.sec_uix:
             self.sec_uix.clear_widgets()
