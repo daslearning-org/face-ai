@@ -25,7 +25,7 @@ from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty, BooleanProperty
 from kivy.uix.widget import Widget
 
-from plyer import filechooser, camera as pl_cam
+from plyer import filechooser #, camera as pl_cam
 
 # local imports
 from services.faceAi import FaceAiSvc
@@ -101,7 +101,7 @@ class FaceAiApp(MDApp):
         self.face_reg_error = False
         self.sec_file_box = None
         self.sec_file_current_path = None
-        self.android_cam_id = None
+        self.used_cam_id = None
         self.tmp_login_name = ""
         self.new_face_req = False
         self.user_preferences = {
@@ -780,7 +780,7 @@ class FaceAiApp(MDApp):
         self.db_conn_ok = self.face_ai.start_db_session(self.db_path)
         if self.db_conn_ok:
             self.tmp_spinner = TempSpinWait()
-            self.tmp_spinner.text = "Checking database, please wait..."
+            self.tmp_spinner.text_to_show = "Checking database, please wait..."
             self.sec_uix.add_widget(self.tmp_spinner)
             height_widget = Widget(
                 size_hint_y = 0.5
@@ -797,27 +797,28 @@ class FaceAiApp(MDApp):
 
     def add_camera(self, parent_element):
         #self.sec_uix = self.root.ids.security_box.ids.camera_box
-        if self.sec_uix:
-            self.sec_uix.clear_widgets()
+        self.on_security_leave()
         self.sec_uix = parent_element
         cam_indx = -1
         if platform == "android":
-            #if self.android_cam_id is not None:
-            #    cam_indx = int(self.android_cam_id)
-            #else:
-            #    self.android_cam_id = self.android_front_cam()
-            #    cam_indx = int(self.android_cam_id)
-            #resolution = (960, 720) # will fallback to 480 if fails again
+            if self.used_cam_id is not None:
+                cam_indx = int(self.used_cam_id)
+            else:
+                self.used_cam_id = self.android_front_cam()
+                cam_indx = int(self.used_cam_id)
+            resolution = (960, 720) # will fallback to 480 if fails again
             import datetime
             now = datetime.datetime.now()
             current_time = str(now.strftime("%H%M%S"))
             current_date = str(now.strftime("%Y%m%d"))
-            self.tmp_login_filename = os.path.join(self.tmp_dir, f"login_{current_date}_{current_time}.jpg")
+            self.tmp_login_filename = os.path.join(self.sec_file_dir, f"login_{current_date}_{current_time}.jpg")
         # for non-android devices
         else:
             resolution = (640, 480)
-            try:
-                if not self.camera:
+            if not self.camera:
+                if self.used_cam_id is not None:
+                    cam_indx = int(self.used_cam_id)
+                else:
                     import cv2
                     available_cameras = []
                     for i in range(2):
@@ -827,22 +828,25 @@ class FaceAiApp(MDApp):
                             available_cameras.append(i)
                             cap.release()
                     if len(available_cameras) >= 1:
-                        cam_indx = available_cameras[0]
+                        self.used_cam_id = cam_indx = available_cameras[0]
                     else:
                         self.show_toast_msg(f"No camera found on {platform}!", is_error=True)
                         return
-                    self.camera = Camera(
-                        index = cam_indx,
-                        resolution = resolution,
-                        fit_mode = "contain",
-                        play = True
-                    )
-                else:
-                    self.camera.play = True
-                self.sec_uix.add_widget(self.camera)
-            except Exception as e:
-                print(f"Error setting up the camera: {e}")
-                self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
+        # using custom kivy cam for all env
+        try:
+            if not self.camera:
+                self.camera = Camera(
+                    index = cam_indx,
+                    resolution = resolution,
+                    fit_mode = "contain",
+                    play = True
+                )
+            else:
+                self.camera.play = True
+            self.sec_uix.add_widget(self.camera)
+        except Exception as e:
+            print(f"Error setting up the camera: {e}")
+            self.show_toast_msg(f"Error setting up the camera: {e}", is_error=True)
 
     def add_name_input(self, parent_element):
         name_inp_elem = NameInput()
@@ -916,12 +920,7 @@ class FaceAiApp(MDApp):
             )
 
     def sec_login_ok(self, msg:str="Login"):
-        if self.camera:
-            self.camera.play = False
-            #self.camera._camera.stop()
-            #self.camera = None
-        if self.sec_uix:
-            self.sec_uix.clear_widgets()
+        self.on_security_leave()
         self.sec_file_box = SecAfterLogin()
         secMdList = self.sec_file_box.ids.sec_file_list
         sec_files = self.get_sec_file_list(self.sec_file_dir)
@@ -967,48 +966,28 @@ class FaceAiApp(MDApp):
                 self.sec_login_ok()
                 Clock.schedule_once(lambda dt: self.show_toast_msg(msg))
 
-    def after_android_login_photo(self, instance=None):
-        if self.tmp_login_filename is None or not os.path.exists(self.tmp_login_filename):
-            self.show_toast_msg("Android photo error", True, 2)
-            return
-        import cv2
-        img = cv2.imread(self.tmp_login_filename)
-        self.sec_face_login_save(self.tmp_login_name, img, self.new_face_req)
-        os.remove(self.tmp_login_filename)
-        self.tmp_login_filename = None
-        self.tmp_login_name = ""
-        if self.new_face_req:
-            self.new_face_req = False
-
     def sec_capture_frame(self, instance=None, newFace=False):
+        if not self.camera or not self.camera.texture:
+            self.show_toast_msg("Camera is Not OK", True, 2)
+            return
         if instance:
             name_txt = str(instance.text)
             name_txt = name_txt.strip()
         else:
             name_txt = ""
         try:
-            if platform == "android":
-                self.tmp_login_name = name_txt
-                if newFace:
-                    self.new_face_req = True
-                pl_cam.take_picture(
-                    filename=self.tmp_login_filename,
-                    on_complete=self.after_android_login_photo
-                )
-            else:
-                if not self.camera or not self.camera.texture:
-                    self.show_toast_msg("Camera is Not OK", True, 2)
-                    return
-                import cv2
-                import numpy as np
-                texture = self.camera.texture
-                pixels = texture.pixels
-                width, height = texture.size
-                arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
-                # if above solution fails, will add 90 rotate
-                img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
-                #print(img)
-                self.sec_face_login_save(name_txt, img, newFace)
+            import cv2
+            import numpy as np
+            texture = self.camera.texture
+            pixels = texture.pixels
+            width, height = texture.size
+            arr = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 4))
+            img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+            if platform == 'android':
+                cv2.imwrite(self.tmp_login_filename, img) # to debug the capture
+                #arr = np.flipud(arr)  # Flip up down in android
+            #print(img)
+            self.sec_face_login_save(name_txt, img, newFace)
         except Exception as e:
             print(f"Error processing frame: {e}")
 
@@ -1095,8 +1074,8 @@ class FaceAiApp(MDApp):
     def on_security_leave(self):
         if self.camera:
             self.camera.play = False
-            #self.camera._camera.stop()
-            #self.camera = None
+            if platform == "android":
+                self.camera = None
             print("Camera has been stopped")
         if self.sec_uix:
             self.sec_uix.clear_widgets()
