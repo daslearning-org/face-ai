@@ -92,6 +92,9 @@ class CameraAndroid(CameraBase):
         print("Facing:", camera_info.facing)
         self._android_camera.setDisplayOrientation(result)
         params = self._android_camera.getParameters()
+        sizes = params.getSupportedPreviewSizes()
+        for s in sizes:
+            print(f"{s.width} x {s.height}")
         width, height = self._resolution
         params.setPreviewSize(width, height)
         supported_focus_modes = self._android_camera.getParameters() \

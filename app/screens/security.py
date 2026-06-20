@@ -81,7 +81,7 @@ Builder.load_string('''
     spacing: dp(4)
     MDGridLayout:
         cols: 2
-        padding: 4, 4, 4, 24
+        padding: 4, 4, 4, 32
         adaptive_height: True
         MDLabel:
             text: "Enter your name"
