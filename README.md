@@ -18,7 +18,12 @@ You can buy me a coffee via [this link](https://www.paypal.com/paypalme/soomnath
 To be added later...
 
 ## 🖧 Our Scematic Architecture
-To be added...
+<p align="left"><img width="80%" src="docs/images/FaceRecognitionFlow.gif" /></p>
+
+| Model | Source Link | Size  | Remarks |
+| :---- | :---------- | :---: | ------- |
+| det_10g.onnx | [buffalo_l](https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip) | 17MB | Face Detection |
+| arc.onnx | [arcface-onnx](https://huggingface.co/garavv/arcface-onnx/tree/main) | 137MB | Face Recognition |
 
 
 ## 🧑‍💻 Quickstart Guide
