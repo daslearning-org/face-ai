@@ -15,7 +15,8 @@ You can buy me a coffee via [this link](https://www.paypal.com/paypalme/soomnath
 <a href="https://www.paypal.com/paypalme/soomnathsdas"><img src="./docs/images/donate.svg" height="40"></a>
 
 ## 📽️ Demo
-To be added later...
+You can click on the below Image or this [Youtube Link](https://www.youtube.com/watch?v=GezJh-6yIKg) to see the demo. Please let me know in the comments, how do you feel about this App. <br>
+[![FaceAiThumb](./docs/images/gitThumb.jpg)](https://www.youtube.com/watch?v=GezJh-6yIKg)
 
 ## 🖧 Our Scematic Architecture
 <p align="left"><img width="80%" src="docs/images/FaceRecognitionFlow.gif" /></p>
